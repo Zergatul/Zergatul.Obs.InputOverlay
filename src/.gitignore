@@ -1,6 +1,5 @@
-﻿/.vs
-*.suo
+﻿*.suo
 *.user
-
+/.vs
 /bin
 /obj
