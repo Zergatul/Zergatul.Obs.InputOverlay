@@ -1,0 +1,111 @@
+html, body {
+    /*background-color: black;*/
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.hidden {
+    display: none !important;
+}
+
+div.container {
+    display: block;
+    white-space: nowrap;
+}
+
+div.keyboard {
+    display: inline-block;
+    margin: 10px;
+}
+
+div.mouse {
+    display: inline-block;
+    margin: 10px;
+}
+
+div.mouse > svg {
+    width: 200px;
+}
+
+div.button,
+div.small-button,
+div.tab-button,
+div.caps-button,
+div.shift-button,
+div.ctrl-button,
+div.alt-button,
+div.space-button {
+    border: 2px solid white;
+    border-radius: 10px;
+    color: white;
+    display: inline-block;
+    font-family: Calibri;
+    font-size: 20px;
+    line-height: 40px;
+    height: 40px;
+    text-align: center;
+    width: 40px;
+}
+
+div.small-button {
+    line-height: 30px;
+    height: 30px;
+}
+
+div.tab-button {
+    width: 60px;
+}
+
+div.caps-button {
+    width: 70px;
+}
+
+div.shift-button {
+    width: 90px;
+}
+
+div.ctrl-button {
+    width: 60px;
+}
+
+div.alt-button {
+    width: 60px;
+}
+
+div.space-button {
+    width: 280px;
+}
+
+div.pressed {
+    background-color: #2DA026;
+    box-shadow: 0 0 8px 3px rgba(35, 173, 278, 1);
+}
+
+div.white-space {
+    border: 2px solid transparent;
+    display: inline-block;
+    width: 40px;
+}
+
+div.line {
+    height: 5px;
+}
+
+div.big-line {
+    height: 15px;
+}
+
+div.released {
+    animation: key-released 0.5s ease-out;
+}
+
+@keyframes key-released {
+    from {
+        background-color: #96CF13;
+    }
+
+    to {
+        background-color: transparent;
+    }
+}
