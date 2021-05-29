@@ -1,6 +1,8 @@
 # Zergatul.Obs.InputOverlay
 Input overlay plugin for OBS. Supported systems: Windows 10 x64
 
+![logo](https://github.com/Zergatul/Zergatul.Obs.InputOverlay/blob/master/docs/logo.png?raw=true)
+
 # Installation
 1. Download latest release here: https://github.com/Zergatul/Zergatul.Obs.InputOverlay/releases
 1. Unzip it to any location you want
@@ -13,6 +15,8 @@ Input overlay plugin for OBS. Supported systems: Windows 10 x64
     - Check `Use custom framerate`, and set FPS to `60`, if you are streaming/recording in 60 FPS
     - Check `Shutdown source when not visible`. This will allow you to hide/show source after you restarted the server
     - Do the same for mouse: `URL`: `http://localhost:5001/mouse.html`, `Width`: `250`, `Height`: `350`
+
+![keyboard source](https://github.com/Zergatul/Zergatul.Obs.InputOverlay/blob/master/docs/keyboard-source.png?raw=true)
 
 # Advanced usage
 1. If you are running server application without elevated priviledges, it will not be able to detect your inputs from applications running under administrator. Example: I have game started from Steam, and command prompt, running as Administrator. Server will be able to detect inputs in game, but will show nothing when I type something in command prompt.
