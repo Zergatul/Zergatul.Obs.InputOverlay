@@ -216,6 +216,7 @@ namespace Zergatul.Obs.InputOverlay
                 case VK_MBUTTON: return Button.Mouse3;
                 case VK_XBUTTON1: return Button.Mouse4;
                 case VK_XBUTTON2: return Button.Mouse5;
+
                 case VK_TAB: return Button.Tab;
                 case VK_SHIFT: return Button.Shift;
                 case VK_CONTROL: return Button.Ctrl;
@@ -223,6 +224,8 @@ namespace Zergatul.Obs.InputOverlay
                 case VK_CAPITAL: return Button.Caps;
                 case VK_ESCAPE: return Button.Esc;
                 case VK_SPACE: return Button.Space;
+                case VK_RETURN: return Button.Enter;
+
                 case VK_0: return Button.Num0;
                 case VK_1: return Button.Num1;
                 case VK_2: return Button.Num2;
@@ -233,6 +236,7 @@ namespace Zergatul.Obs.InputOverlay
                 case VK_7: return Button.Num7;
                 case VK_8: return Button.Num8;
                 case VK_9: return Button.Num9;
+
                 case VK_A: return Button.KeyA;
                 case VK_B: return Button.KeyB;
                 case VK_C: return Button.KeyC;
@@ -259,18 +263,33 @@ namespace Zergatul.Obs.InputOverlay
                 case VK_X: return Button.KeyX;
                 case VK_Y: return Button.KeyY;
                 case VK_Z: return Button.KeyZ;
+
                 case VK_F1: return Button.F1;
                 case VK_F2: return Button.F2;
                 case VK_F3: return Button.F3;
                 case VK_F4: return Button.F4;
+                case VK_F5: return Button.F5;
+                case VK_F6: return Button.F6;
+                case VK_F7: return Button.F7;
+                case VK_F8: return Button.F8;
+                case VK_F9: return Button.F9;
+                case VK_F10: return Button.F10;
+                case VK_F11: return Button.F11;
+                case VK_F12: return Button.F12;
+
                 case VK_LSHIFT: return Button.Shift;
                 case VK_RSHIFT: return Button.Shift;
                 case VK_LCONTROL: return Button.Ctrl;
                 case VK_RCONTROL: return Button.Ctrl;
                 case VK_LMENU: return Button.Alt;
                 case VK_RMENU: return Button.Alt;
+                case VK_OEM_2: return Button.Slash;
                 case VK_OEM_3: return Button.Tilde;
-                default: return Button.None;
+                case VK_OEM_5: return Button.Backslash;
+
+                default:
+                    //_logger.LogInformation($"New key {vkCode}");
+                    return Button.None;
             }
         }
     }

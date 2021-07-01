@@ -9,6 +9,14 @@ namespace Zergatul.Obs.InputOverlay
         F2,
         F3,
         F4,
+        F5,
+        F6,
+        F7,
+        F8,
+        F9,
+        F10,
+        F11,
+        F12,
 
         Tilde,
         Num1,
@@ -33,6 +41,7 @@ namespace Zergatul.Obs.InputOverlay
         KeyI,
         KeyO,
         KeyP,
+        Backslash,
 
         Caps,
         KeyA,
@@ -44,6 +53,7 @@ namespace Zergatul.Obs.InputOverlay
         KeyJ,
         KeyK,
         KeyL,
+        Enter,
 
         Shift,
         KeyZ,
@@ -53,6 +63,7 @@ namespace Zergatul.Obs.InputOverlay
         KeyB,
         KeyN,
         KeyM,
+        Slash,
 
         Ctrl,
         Alt,
