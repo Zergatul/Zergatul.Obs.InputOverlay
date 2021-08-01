@@ -236,6 +236,7 @@ namespace Zergatul.Obs.InputOverlay
                 case VK_7: return Button.Num7;
                 case VK_8: return Button.Num8;
                 case VK_9: return Button.Num9;
+                case VK_BACK: return Button.Backspace;
 
                 case VK_A: return Button.KeyA;
                 case VK_B: return Button.KeyB;
@@ -283,9 +284,22 @@ namespace Zergatul.Obs.InputOverlay
                 case VK_RCONTROL: return Button.Ctrl;
                 case VK_LMENU: return Button.Alt;
                 case VK_RMENU: return Button.Alt;
+                case VK_OEM_1: return Button.Semicolon;
                 case VK_OEM_2: return Button.Slash;
                 case VK_OEM_3: return Button.Tilde;
+                case VK_OEM_4: return Button.LeftBracket;
                 case VK_OEM_5: return Button.Backslash;
+                case VK_OEM_6: return Button.RightBracket;
+                case VK_OEM_7: return Button.Quote;
+                case VK_OEM_COMMA: return Button.Comma;
+                case VK_OEM_PERIOD: return Button.Period;
+                case VK_OEM_MINUS: return Button.Minus;
+                case VK_OEM_PLUS: return Button.Plus;
+
+                case VK_LEFT: return Button.Left;
+                case VK_UP: return Button.Up;
+                case VK_RIGHT: return Button.Right;
+                case VK_DOWN: return Button.Down;
 
                 default:
                     //_logger.LogInformation($"New key {vkCode}");
