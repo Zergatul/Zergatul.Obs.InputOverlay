@@ -87,6 +87,8 @@ namespace Zergatul.Obs.InputOverlay
         Mouse2,
         Mouse3,
         Mouse4,
-        Mouse5
+        Mouse5,
+        MouseWheelUp,
+        MouseWheelDown
     }
 }

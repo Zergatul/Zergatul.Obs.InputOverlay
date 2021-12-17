@@ -19,6 +19,7 @@ namespace Zergatul.Obs.InputOverlay
         public const int WM_RBUTTONUP = 0x0205;
         public const int WM_MBUTTONDOWN = 0x0207;
         public const int WM_MBUTTONUP = 0x0208;
+        public const int WM_MOUSEWHEEL = 0x020A;
         public const int WM_XBUTTONDOWN = 0x020B;
         public const int WM_XBUTTONUP = 0x020C;
 
@@ -219,5 +220,26 @@ namespace Zergatul.Obs.InputOverlay
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         public static extern IntPtr GetModuleHandle(string lpModuleName);
+
+        #region Structures
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MSLLHOOKSTRUCT
+        {
+            public POINT pt;
+            public int mouseData;
+            public int flags;
+            public int time;
+            public UIntPtr dwExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct POINT
+        {
+            public int x;
+            public int y;
+        }
+
+        #endregion
     }
 }

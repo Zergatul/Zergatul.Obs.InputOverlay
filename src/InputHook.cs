@@ -118,6 +118,8 @@ namespace Zergatul.Obs.InputOverlay
             {
                 Button button = Button.None;
                 bool pressed = false;
+                int? count = null;
+                var hookStruct = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
                 switch ((int)wParam)
                 {
                     case WM_LBUTTONDOWN:
@@ -151,8 +153,7 @@ namespace Zergatul.Obs.InputOverlay
                         break;
 
                     case WM_XBUTTONDOWN:
-                        int mouseData = Marshal.ReadInt32(lParam + 8);
-                        switch (mouseData >> 16)
+                        switch (hookStruct.mouseData >> 16)
                         {
                             case XBUTTON1: button = Button.Mouse4; break;
                             case XBUTTON2: button = Button.Mouse5; break;
@@ -161,13 +162,26 @@ namespace Zergatul.Obs.InputOverlay
                         break;
 
                     case WM_XBUTTONUP:
-                        mouseData = Marshal.ReadInt32(lParam + 8);
-                        switch (mouseData >> 16)
+                        switch (hookStruct.mouseData >> 16)
                         {
                             case XBUTTON1: button = Button.Mouse4; break;
                             case XBUTTON2: button = Button.Mouse5; break;
                         }
                         pressed = false;
+                        break;
+
+                    case WM_MOUSEWHEEL:
+                        int shift = (hookStruct.mouseData >> 16) / 120;
+                        if (shift > 0)
+                        {
+                            button = Button.MouseWheelUp;
+                            count = shift;
+                        }
+                        if (shift < 0)
+                        {
+                            button = Button.MouseWheelDown;
+                            count = -shift;
+                        }
                         break;
                 }
 
@@ -175,7 +189,16 @@ namespace Zergatul.Obs.InputOverlay
                 {
                     lock (_syncObject)
                     {
-                        _buttonEventsQueue.Enqueue(new ButtonEvent(button, pressed));
+                        if (count == null)
+                        {
+                            // regular mouse button
+                            _buttonEventsQueue.Enqueue(new ButtonEvent(button, pressed));
+                        }
+                        else
+                        {
+                            // mouse wheel
+                            _buttonEventsQueue.Enqueue(new ButtonEvent(button, false, count));
+                        }
                         _resetEvent.Set();
                     }
                 }
@@ -312,11 +335,19 @@ namespace Zergatul.Obs.InputOverlay
     {
         public Button Button { get; }
         public bool Pressed { get; }
+        public int? Count { get; }
 
         public ButtonEvent(Button button, bool pressed)
+            : this(button, pressed, null)
+        {
+            
+        }
+
+        public ButtonEvent(Button button, bool pressed, int? count)
         {
             Button = button;
             Pressed = pressed;
+            Count = count;
         }
     }
 }

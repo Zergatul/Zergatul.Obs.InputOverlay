@@ -45,7 +45,8 @@ namespace Zergatul.Obs.InputOverlay
             {
                 type = eventType,
                 button = e.Button.ToString(),
-                pressed = e.Pressed
+                pressed = e.Pressed,
+                count = e.Count
             });
             byte[] raw = Encoding.ASCII.GetBytes(json);
 
@@ -261,6 +262,7 @@ namespace Zergatul.Obs.InputOverlay
             public int type { get; set; }
             public string button { get; set; }
             public bool pressed { get; set; }
+            public int? count { get; set; }
             public int? ping { get; set; }
         }
 
