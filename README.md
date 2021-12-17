@@ -20,8 +20,13 @@ Input overlay plugin for OBS. Supported systems: Windows 10 x64
 
 # Advanced usage
 1. If you are running server application without elevated priviledges, it will not be able to detect your inputs from applications running under administrator. Example: I have game started from Steam, and command prompt, running as Administrator. Server will be able to detect inputs in game, but will show nothing when I type something in command prompt.
-1. You can show more keys, change style, colors, animations if you are familiar with HTML and CSS. Check `wwwroot` folder within application folder. It contains HTML, CSS and JavaScript files. You can get all supported key names from [Button.cs](src/Button.cs) file.
-1. If you need to restart server application, you will need to hide sources in OBS, and show them again.
+2. You can show more keys, change style, colors, animations if you are familiar with HTML and CSS. Check `wwwroot` folder within application folder. It contains HTML, CSS and JavaScript files. You can get all supported key names from [Button.cs](src/Button.cs) file.
+3. [Customizing mouse](docs/CustomizingMouse.md).
+4. If you need to restart server application, you will need to hide sources in OBS, and show them again.
+5. If you want to play on one PC, and run OBS on another you need to run executable with parameter: `--urls http://<IP address>:<port>/`. IP address should be local network address of PC where you play game and run executable. You can choose port whatever you like, but it is better not use ports lower than 1000. If you have firewall make use you opened incoming TCP port. Example: `Zergatul.Obs.InputOverlay.exe --urls http://192.168.1.123:12345/`. If everything is fine, you should see in the log: `Now listening on: http://192.168.1.123:12345`.
+
+# Troubleshooting
+If you encounter any problems with running Browser Source in OBS, you can open keyboard/mouse URL's in your browser and check for errors in developer console. In `styles.css` uncomment second line: `background-color: black;`. Now open URL in your browser with Developer Tools opened (usually this is `F12` key). Don't forget to comment out this line again if you start using overlay in OBS.
 
 # Build application from sources
 You can open solution file in Visual Studio 2019. Program is written in C#, by using ASP.NET Core for web server.
