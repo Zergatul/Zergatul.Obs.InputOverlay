@@ -4,7 +4,7 @@ All examples here are done in Inkscape. This is free and open-source vector grap
 
 ![ObjectsTree](https://github.com/Zergatul/Zergatul.Obs.InputOverlay/blob/master/docs/InkscapeObjectsTree.png?raw=true)
 
-There labels are not required, but they will help you to quickly navigate inside SVG image. If you select one of these labeled paths, in Object Properties window you can see ID of an object:
+These labels are not required, but they will help you to quickly navigate inside SVG document. If you select one of these labeled paths, in Object Properties window you can see ID of an object:
 
 ![ObjectProperties](https://github.com/Zergatul/Zergatul.Obs.InputOverlay/blob/master/docs/InkscapeObjectProperties.png?raw=true)
 
