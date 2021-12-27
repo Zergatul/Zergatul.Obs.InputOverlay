@@ -14,9 +14,13 @@
 
     var initScroll = function () {
         let scroll = document.getElementById('MouseScrollUp');
-        scroll.setAttribute('opacity', 0);
+        if (scroll) {
+            scroll.setAttribute('opacity', 0);
+        }
         scroll = document.getElementById('MouseScrollDown');
-        scroll.setAttribute('opacity', 0);
+        if (scroll) {
+            scroll.setAttribute('opacity', 0);
+        }
     };
 
     var removeSvgAnimations = function (element) {
