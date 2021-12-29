@@ -8,9 +8,9 @@ These labels are not required, but they will help you to quickly navigate inside
 
 ![ObjectProperties](https://github.com/Zergatul/Zergatul.Obs.InputOverlay/blob/master/docs/InkscapeObjectProperties.png?raw=true)
 
-These ID's are required. In `engine.js` application searches SVG elements by ID, and highlights them when buttons are pressed.
+These ID's are required. In javascript we search SVG elements by ID, and highlight them when buttons are pressed.
 
-Now you can make some changes to example mouse, and try to replace existing mouse image in `mouse.html`. After you made some changes to SVG file, open it in any text editor. Copy entire `<svg>` element (this is entire file without first line). Open `mouse.html`, delete entire `<svg>` element and `Ctrl+V` another `<svg>` element. Now remove `width` and `height` attributes of `svg` element. In below example lines `width="210mm"` and `height="297mm"` must be removed:
+Now you can make some changes to example mouse, and try to replace existing mouse image in `default-mouse.html`. After you made some changes to SVG file, open it in any text editor. Copy entire `<svg>` element (this is entire file without first line). Open `default-mouse.html`, delete entire `<svg>` element and `Ctrl+V` another `<svg>` element. Now remove `width` and `height` attributes of `svg` element. In below example lines `width="210mm"` and `height="297mm"` must be removed:
 
 ```XML
 <svg
@@ -50,4 +50,4 @@ After `<metadata>` element, or before first `<g>` element insert glow filter def
 </defs>
 ```
 
-You can also find it inside original [mouse.html](../src/wwwroot/mouse.html). Now save updated `mouse.html` and check how it looks.
+You can also find it inside original [default-mouse.html](../src/wwwroot/default-mouse.html). Now save updated `default-mouse.html` with different name and check how it looks.

@@ -16,7 +16,7 @@
     <!-- Publish settings -->
     <!-- uncomment below line before publish -->
     <!-- for some reason VS2022 don't allow to debug while this enabled -->
-    <PublishSingleFile>true</PublishSingleFile> 
+    <!--<PublishSingleFile>true</PublishSingleFile> -->
     <PublishTrimmed>true</PublishTrimmed>
     <PublishReadyToRun>true</PublishReadyToRun>
     <TrimMode>copyused</TrimMode>
