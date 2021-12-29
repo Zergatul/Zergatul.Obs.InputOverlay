@@ -2,7 +2,151 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" type="text/css" href="styles.css" />
+    <script>
+        const buttonPressedColor = '#2DA026';
+        const buttonReleasedColor = '#96CF13';
+        const releaseFadeTime = '250ms';
+        const scrollAnimationTime = '250'; // milliseconds
+    </script>
+    <style>
+        body {
+            /*background-color: black;*/ /* uncomment to this to debug in browser */
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        div.mouse {
+            display: inline-block;
+            margin: 10px;
+        }
+        div.mouse > svg {
+            width: 200px;
+        }
+    </style>
+    <script>
+        function addSvgReleased(element) {
+            let animate = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+            animate.setAttribute('id', element.id + '-animate');
+            animate.setAttribute('attributeType', 'XML');
+            animate.setAttribute('attributeName', 'fill-opacity');
+            animate.setAttribute('values', '1.0; 0.0');
+            animate.setAttribute('dur', releaseFadeTime);
+            animate.setAttribute('fill', 'freeze');
+
+            element.appendChild(animate);
+            animate.beginElement();
+        };
+
+        function initScroll() {
+            let scroll = document.getElementById('MouseScrollUp');
+            scroll.setAttribute('opacity', 0);
+            scroll = document.getElementById('MouseScrollDown');
+            scroll.setAttribute('opacity', 0);
+        };
+
+        function removeSvgAnimations(element) {
+            for (let i = 0; i < element.children.length; i++) {
+                if (element.children[i].tagName == 'animateTransform' || element.children[i].tagName == 'animate') {
+                    element.removeChild(element.children[i]);
+                    i--;
+                }
+            }
+        };
+
+        let scrollUpTimeoutId = 0;
+        let scrollDownTimeoutId = 0;
+
+        function processScroll(id, dy, setupTimeout) {
+            let scroll = document.getElementById(id);
+            removeSvgAnimations(scroll);
+
+            let animateTransform = document.createElementNS('http://www.w3.org/2000/svg', 'animateTransform');
+            animateTransform.setAttribute('attributeName', 'transform');
+            animateTransform.setAttribute('attributeType', 'XML');
+            animateTransform.setAttribute('type', 'translate');
+            animateTransform.setAttribute('from', '0 0');
+            animateTransform.setAttribute('to', '0 ' + dy);
+            animateTransform.setAttribute('dur', scrollAnimationTime + 'ms');
+            animateTransform.setAttribute('repeatCount', '1');
+
+            var animate = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+            animate.setAttribute('attributeType', 'XML');
+            animate.setAttribute('attributeName', 'opacity');
+            animate.setAttribute('values', '1.0; 0.0');
+            animate.setAttribute('dur', scrollAnimationTime + 'ms');
+            animate.setAttribute('repeatCount', '1');
+
+            scroll.appendChild(animateTransform);
+            scroll.appendChild(animate);
+            animateTransform.beginElement();
+            animate.beginElement();
+
+            setupTimeout(function () {
+                removeSvgAnimations(scroll);
+                scroll.setAttribute('opacity', 0);
+            }, scrollAnimationTime);
+        };
+
+        function scrollUp() {
+            processScroll('MouseScrollUp', '-10', function (callback, delay) {
+                clearTimeout(scrollUpTimeoutId);
+                scrollUpTimeoutId = setTimeout(callback, delay);
+            });
+        };
+
+        function scrollDown() {
+            processScroll('MouseScrollDown', '10', function (callback, delay) {
+                clearTimeout(scrollDownTimeoutId);
+                scrollDownTimeoutId = setTimeout(callback, delay);
+            });
+        };
+
+        function listenWebSocket() {
+            let ws = new WebSocket('ws://' + location.host + '/ws');
+            ws.onopen = function () {
+                ws.send(JSON.stringify({ listen: 'MouseButtons' }));
+            };
+            ws.onmessage = function (event) {
+                let data = JSON.parse(event.data);
+
+                if (data.type == 'Ping') {
+                    // reply to ping messages
+                    ws.send(JSON.stringify({ ping: data.ping }));
+                    return;
+                }
+
+                if (data.type == 'MouseButtons') {
+                    if (data.button == 'MouseWheelUp') {
+                        scrollUp();
+                    } else if (data.button == 'MouseWheelDown') {
+                        scrollDown();
+                    } else {
+                        if (data.pressed) {
+                            let element = document.getElementById(data.button);
+                            if (element) {
+                                element.style.fill = buttonPressedColor;
+                                element.style.filter = 'url(#glow)';
+                                removeSvgAnimations(element);
+                            }
+                        } else {
+                            let element = document.getElementById(data.button);
+                            if (element) {
+                                element.style.fill = buttonReleasedColor;
+                                element.style.filter = 'none';
+                                addSvgReleased(element);
+                            }
+                        }
+                    }
+                }
+            };
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            initScroll();
+            listenWebSocket();
+        });
+
+    </script>
 </head>
 <body>
     <div class="mouse">
@@ -91,14 +235,14 @@
                       sodipodi:nodetypes="cssc" />
                 <path style="fill:none;stroke:#ffffff;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
                       d="m 28.648442,134.84558 c 0,0 -7.415624,0.35193 -8.70108,-1.84125 -1.285456,-2.19318 -0.08682,-16.88021 0.89827,-25.29472 0.509363,-4.35092 1.365311,-11.460008 2.524239,-12.933497 1.158928,-1.473488 7.833847,0.03775 7.833847,0.03775 l -1.737252,19.644307 c 0,0 -0.864646,18.02558 -0.818024,20.38741 z"
-                      id="Mouse4"
+                      id="Mouse5"
                       sodipodi:nodetypes="szszccs"
-                      inkscape:label="Mouse4" />
+                      inkscape:label="Mouse5" />
                 <path style="fill:none;stroke:#ffffff;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
                       d="m 28.664656,137.17608 c 0,0 -6.971195,-1.36132 -8.591765,0.15124 -1.62057,1.51256 -1.233422,13.19201 -1.246602,19.80759 -0.01212,6.08392 -0.305426,16.3052 1.073826,18.22018 1.379253,1.91499 8.595124,0.90916 8.595124,0.90916 0,0 -0.153498,-5.16368 -0.231487,-7.75081 -0.169788,-5.63237 -0.07824,-11.27041 0,-16.9048 0.06682,-4.81225 0.400904,-14.43256 0.400904,-14.43256 z"
-                      id="Mouse5"
+                      id="Mouse4"
                       sodipodi:nodetypes="czszcssc"
-                      inkscape:label="Mouse5" />
+                      inkscape:label="Mouse4" />
                 <path style="fill:none;stroke:#ffffff;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
                       d="m 129.35451,9.4718207 c -1.50903,4.5991043 -1.64775,59.7907283 -2.3517,78.8699083 -0.70395,19.079181 -7.09509,47.864111 -8.32614,50.067221 -1.23104,2.20311 -8.04276,5.11752 -8.5517,8.22098 -0.50895,3.10347 -1.15756,26.05674 -0.14175,28.20648 1.01582,2.14974 11.26714,-1.48687 14.64659,-5.10268 3.37943,-3.61581 7.843,-23.0093 10.20536,-25.89137 3.96875,-5.24442 37.4649,-20.03226 43.37276,-27.07255 5.90786,-7.04029 -2.94319,-84.642331 -5.76413,-89.911085 -2.82094,-5.268751 -5.0966,-6.275349 -7.74852,-7.9375 -2.65192,-1.662151 -33.83174,-14.0485083 -35.34077,-9.4494043 z"
                       id="Mouse2"
@@ -159,9 +303,5 @@
             </g>
         </svg>
     </div>
-    <script type="text/javascript" src="engine.js"></script>
-    <script type="text/javascript">
-        listenEvents(2);
-    </script>
 </body>
 </html>

@@ -1,8 +1,9 @@
-namespace Zergatul.Obs.InputOverlay
+namespace Zergatul.Obs.InputOverlay.Keyboard
 {
-    public enum Button
+    public enum KeyboardButton
     {
         None,
+        Unknown,
 
         Esc,
         F1,
@@ -19,16 +20,16 @@ namespace Zergatul.Obs.InputOverlay
         F12,
 
         Tilde,
-        Num1,
-        Num2,
-        Num3,
-        Num4,
-        Num5,
-        Num6,
-        Num7,
-        Num8,
-        Num9,
-        Num0,
+        Key1,
+        Key2,
+        Key3,
+        Key4,
+        Key5,
+        Key6,
+        Key7,
+        Key8,
+        Key9,
+        Key0,
         Minus,
         Plus,
         Backspace,
@@ -48,7 +49,7 @@ namespace Zergatul.Obs.InputOverlay
         RightBracket,
         Backslash,
 
-        Caps,
+        CapsLock,
         KeyA,
         KeyS,
         KeyD,
@@ -62,7 +63,7 @@ namespace Zergatul.Obs.InputOverlay
         Quote,
         Enter,
 
-        Shift,
+        LeftShift,
         KeyZ,
         KeyX,
         KeyC,
@@ -73,22 +74,49 @@ namespace Zergatul.Obs.InputOverlay
         Comma,
         Period,
         Slash,
+        RightShift,
 
-        Ctrl,
-        Alt,
+        LeftCtrl,
+        LeftWindows,
+        App,
+        LeftAlt,
         Space,
+        RightAlt,
+        RightWindows,
+        RightCtrl,
+
+        PrintScreen,
+        ScrollLock,
+        Pause,
+
+        Insert,
+        Home,
+        PageUp,
+        Delete,
+        End,
+        PageDown,
 
         Left,
         Right,
         Up,
         Down,
 
-        Mouse1,
-        Mouse2,
-        Mouse3,
-        Mouse4,
-        Mouse5,
-        MouseWheelUp,
-        MouseWheelDown
+        NumLock,
+        NumSlash,
+        NumAsterisk,
+        NumMinus,
+        NumPlus,
+        Num0,
+        Num1,
+        Num2,
+        Num3,
+        Num4,
+        Num5,
+        Num6,
+        Num7,
+        Num8,
+        Num9,
+        NumPeriod,
+        NumEnter
     }
 }

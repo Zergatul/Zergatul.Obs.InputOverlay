@@ -2,37 +2,211 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <AssemblyName>Zergatul.Obs.InputOverlay</AssemblyName>
     <RootNamespace>Zergatul.Obs.InputOverlay</RootNamespace>
     <Authors>Zergatul</Authors>
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Version>2.0.0</Version>
+    <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+    <StartupObject>Zergatul.Obs.InputOverlay.Program</StartupObject>
+    <PackageProjectUrl>https://github.com/Zergatul/Zergatul.Obs.InputOverlay</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Zergatul/Zergatul.Obs.InputOverlay</RepositoryUrl>
+
+    <!-- Publish settings -->
+    <!-- uncomment below line before publish -->
+    <!-- for some reason VS2022 don't allow to debug while this enabled -->
+    <PublishSingleFile>true</PublishSingleFile> 
     <PublishTrimmed>true</PublishTrimmed>
     <PublishReadyToRun>true</PublishReadyToRun>
-    <Version>1.0.3.1</Version>
+    <TrimMode>copyused</TrimMode>
+    <SelfContained>true</SelfContained>
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Update="wwwroot\engine.js">
+    <Content Update="wwwroot\default-keyboard.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Update="wwwroot\index.html">
+    <Content Update="wwwroot\default-mouse.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Update="wwwroot\keyboard.html">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Update="wwwroot\mouse.html">
+    <Content Update="wwwroot\mouse-movement.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Update="wwwroot\mouse.svg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Update="wwwroot\styles.css">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
+
+  <!-- list of excluded assemblies from self-contained package -->
+  <Target Name="ConfigureTrimming" BeforeTargets="PrepareForILLink">
+    <ItemGroup>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'System.Security.Cryptography'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'System.Security.Cryptography.Cng'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'System.Security.Cryptography.Csp'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'System.Security.Cryptography.Encoding'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'System.Security.Cryptography.OpenSsl'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'System.Security.Cryptography.Pkcs'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'System.Security.Cryptography.Xml'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.SignalR.Common'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.SignalR.Core'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.SignalR.Protocols.Json'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.SignalR'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Mvc.Abstractions'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Mvc.ApiExplorer'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Mvc.Core'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Mvc.Cors'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Mvc.DataAnnotations'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Mvc.Formatters.Json'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Mvc.Formatters.Xml'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Mvc.Localization'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Mvc.Razor'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Mvc.RazorPages'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Mvc.TagHelpers'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Mvc.ViewFeatures'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Mvc'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Razor.Runtime'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Razor'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.ResponseCaching.Abstractions'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.ResponseCaching'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.ResponseCompression'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Rewrite'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Server.HttpSys'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Session'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.Extensions.Caching.Abstractions'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.Extensions.Caching.Memory'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.JSInterop'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Antiforgery'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Authentication.Abstractions'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Authentication.Cookies'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Authentication.Core'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Authentication.OAuth'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Authentication'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Authorization'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Components.Authorization'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Components.Authorization'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Components.Forms'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Components.Server'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Components.Web'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Component'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.CookiePolicy'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Cors'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Cryptography.Internal'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.Cryptography.KeyDerivatio'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.DataProtection.Abstractions'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.DataProtection.Extensions'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'Microsoft.AspNetCore.DataProtection'">
+        <TrimMode>skip</TrimMode>
+      </ManagedAssemblyToLink>
+    </ItemGroup>
+  </Target>
 
 </Project>

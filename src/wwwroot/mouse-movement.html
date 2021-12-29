@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script>
+        const circleRadius = 320; // pixels
+        const circlePadding = 20; // pixels
+        const elementsCount = 30; // more elements reduce performance
+        const elementWidth = 48; // pixels
+        const elementHeight = 24; // pixels
+
+        // internally every element has "intensity" value
+        // this table is used to map intensity from range [0..1] to some colors
+        // first row should always have opacity 0, and intensity 0
+        // (meaning if mouse is not moving, elememts will be fully transparent)
+        // next row should have intensity greater than previous row
+        // last row should have intensity 1
+        const gradientTable = [
+            // red/green/blue [0..256), opacity [0..1], intensity
+            { red: 45, green: 100, blue: 38, opacity: 0.0, intensity: 0.0 },
+            { red: 45, green: 100, blue: 38, opacity: 1.0, intensity: 0.3 }, // from 0% to 30% - green
+            { red: 255, green: 225, blue: 61, opacity: 1.0, intensity: 0.5 }, // at 50% becomes yellow
+            { red: 255, green: 61, blue: 61, opacity: 1.0, intensity: 0.8 }, // at 80% becomes red
+            { red: 255, green: 61, blue: 61, opacity: 1.0, intensity: 1.0 }, // and stays the same to 100%
+
+            // single color example below
+            // uncomment lines below to use it, and remove above lines
+            // { red: 45, green: 100, blue: 38, opacity: 0.0, intensity: 0.0 },
+            // { red: 45, green: 100, blue: 38, opacity: 1.0, intensity: 1.0 }
+        ];
+
+        // must be greater than 1, closer to 1 = slower fade, further from 1 = faster fade
+        // every millisecond intensity decreases by this value
+        const fadeFactor = 1.005;
+
+        // resulting speed multiplied by this value
+        // change this if you change DPI
+        const speedFactor = 0.00001;
+
+        // highlights neighbours elements, but with smaller intencity
+        // affects x2 neighbours (in both directions)
+        const affectedNeighbours = 1;
+
+        // must be greater than 1, affects how intence neighbour will be highlighted
+        // greater value - less intence
+        const blurOnNeighbourFadeFactor = 2;
+    </script>
+    <style>
+        body {
+            /*background-color: black;*/ /* uncomment this to debug in browser */
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        div.element {
+            border-radius: 50%;
+            border: 2px solid white;
+            position: absolute;
+        }
+    </style>
+    <script>
+        const elements = new Array(elementsCount);
+        const queue = new Array();
+        const colorMap = new Array(1001);
+        const opacityMap = new Array(1001);
+
+        function getElementByIndex(index) {
+            while (index < 0) {
+                index += elementsCount;
+            }
+            while (index >= elementsCount) {
+                index -= elementsCount;
+            }
+            return elements[index];
+        }
+
+        function addIntensity(element, value) {
+            element.intensity += value;
+            if (element.intensity > 1) {
+                element.intensity = 1;
+            }
+            element.changed = true;
+        }
+
+        function listenWebSocket() {
+            let ws = new WebSocket('ws://' + location.host + '/ws');
+            ws.onopen = function () {
+                // listen for MoveEvent's
+                ws.send(JSON.stringify({ listen: 'RawMouseMovement' }));
+            };
+            ws.onmessage = function (event) {
+                var data = JSON.parse(event.data);
+            
+                if (data.type == 'Ping') {
+                    // reply to ping messages
+                    ws.send(JSON.stringify({ ping: data.ping }));
+                    return;
+                }
+
+                if (data.type == 'RawMouseMovement') {
+                    // MoveEvent
+                    queue.push(data);
+                }
+            };
+        }
+
+        function buildCircle() {
+            for (let i = 0; i < elementsCount; i++) {
+                let angle = 2 * Math.PI * i / elementsCount;
+                let div = document.createElement('div');
+                div.classList.add('element');
+                div.style.opacity = 0;
+                div.style.width = elementWidth + 'px';
+                div.style.height = elementHeight + 'px';
+                div.style.left = (circlePadding + circleRadius + Math.cos(angle) * circleRadius).toFixed(3) + 'px';
+                div.style.top = (circlePadding + circleRadius + Math.sin(angle) * circleRadius).toFixed(3) + 'px';
+                div.style.transform = 'rotate(' + (90 + 360 * i / elementsCount).toFixed(3) + 'deg)';
+                document.body.appendChild(div);
+
+                elements[i] = {
+                    div: div,
+                    intensity: 0,
+                    changed: false
+                };
+            }
+        }
+
+        function buildGradientTable() {
+            let hex = function (val) {
+                if (val < 0) {
+                    val = 0;
+                }
+                if (val >= 256) {
+                    val = 255;
+                }
+                if (val < 16) {
+                    return '0' + val.toString(16);
+                } else {
+                    return val.toString(16);
+                }
+            };
+            let tableIndex = 0;
+            for (let i = 0; i <= 1000; i++) {
+                if (i / 1000 >= gradientTable[tableIndex].intensity) {
+                    tableIndex++;
+                }
+                let curr = gradientTable[tableIndex - 1];
+                let next = gradientTable[tableIndex];
+                if (!next) {
+                    next = curr;
+                }
+                let delta = next.intensity - curr.intensity;
+                if (delta == 0) {
+                    colorMap[i] = '#' + hex(curr.red) + hex(curr.green) + hex(curr.blue);
+                    opacityMap[i] = Math.round(curr.opacity * 1000) / 1000;
+                } else {
+                    let factor = (i / 1000 - curr.intensity) / delta;
+                    let r = curr.red + Math.round((next.red - curr.red) * factor);
+                    let g = curr.green + Math.round((next.green - curr.green) * factor);
+                    let b = curr.blue + Math.round((next.blue - curr.blue) * factor);
+                    let o = curr.opacity + (next.opacity - curr.opacity) * factor;
+                    colorMap[i] = '#' + hex(r) + hex(g) + hex(b);
+                    opacityMap[i] = Math.round(o * 1000) / 1000;
+                }
+            }
+        }
+
+        let lastTimestamp = null;
+        function animate(timestamp) {
+            if (lastTimestamp == null) {
+                lastTimestamp = timestamp;
+                window.requestAnimationFrame(animate);
+                return;
+            }
+
+            let deltaTime = timestamp - lastTimestamp;
+
+            /* decrease brightness of all items */
+            let fadeValue = Math.pow(fadeFactor, deltaTime);
+            for (let i = 0; i < elementsCount; i++) {
+                if (elements[i].intensity > 0) {
+                    elements[i].intensity = elements[i].intensity / fadeValue;
+                    if (elements[i].intensity < 0.001) {
+                        elements[i].intensity = 0;
+                    }
+                    elements[i].changed = true;
+                }
+            }
+
+            /* calculate sum of movements */
+            let dx = 0;
+            let dy = 0;
+            for (let i = 0; i < queue.length; i++) {
+                dx += queue[i].dx;
+                dy += queue[i].dy;
+            }
+
+            queue.splice(0, queue.length);
+
+            let angle = Math.atan2(dy, dx);
+            let index = Math.round(angle / (2 * Math.PI / elementsCount));
+
+            let speed = 1000 * Math.sqrt(dx * dx + dy * dy) / deltaTime;
+            let deltaIntensity = speed * speedFactor;
+            if (deltaIntensity > 1) {
+                deltaIntensity = 1;
+            }
+
+            let element = getElementByIndex(index);
+            addIntensity(element, deltaIntensity);
+
+            let neighbourFadeValue = blurOnNeighbourFadeFactor;
+            for (let i = 1; i <= affectedNeighbours; i++) {
+                let element1 = getElementByIndex(index - i);
+                let element2 = getElementByIndex(index + i);
+                addIntensity(element1, deltaIntensity / neighbourFadeValue);
+                addIntensity(element2, deltaIntensity / neighbourFadeValue);
+                neighbourFadeValue *= blurOnNeighbourFadeFactor;
+            }
+
+            /* apply intensity value to elements style */
+
+            for (let i = 0; i < elementsCount; i++) {
+                if (elements[i].changed) {
+                    let index = Math.round(elements[i].intensity * 1000);
+                    elements[i].div.style.backgroundColor = colorMap[index];
+                    elements[i].div.style.opacity = opacityMap[index];
+                    elements[i].changed = false;
+                }
+            }
+
+            lastTimestamp = timestamp
+            window.requestAnimationFrame(animate);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            buildCircle();
+            buildGradientTable();
+            listenWebSocket();
+            window.requestAnimationFrame(animate);
+        });
+    </script>
+</head>
+<body>
+
+</body>
+</html>

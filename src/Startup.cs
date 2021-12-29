@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Zergatul.Obs.InputOverlay.Mouse;
 
 namespace Zergatul.Obs.InputOverlay
 {
@@ -9,9 +11,14 @@ namespace Zergatul.Obs.InputOverlay
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddSingleton<IWebSocketHandler, WebSocketHandler>();
-            services.AddSingleton<IInputHook, InputHook>();
+            services.AddSingleton<IRawDeviceInput, RawDeviceInput>();
+            //services.AddSingleton<IMouseBallistics, MouseBallistics>();
 
-            //services.AddSingleton<IInputHook, EmptyInputHook>();
+            /*services.AddLogging(builder =>
+            {
+                builder.SetMinimumLevel(LogLevel.Debug);
+                builder.AddFilter("Microsoft", LogLevel.Information);
+            });*/
         }
 
         public void Configure(IApplicationBuilder app, IHostApplicationLifetime hostAppLifetime, IWebSocketHandler handler)

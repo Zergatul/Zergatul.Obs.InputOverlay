@@ -24,7 +24,7 @@ namespace Zergatul.Obs.InputOverlay
             using (var process = Process.GetCurrentProcess())
             using (var module = process.MainModule)
             {
-                HookHandle = SetWindowsHookEx(type, _proc, GetModuleHandle(module.ModuleName), 0);
+                HookHandle = SetWindowsHookEx(type, _proc, GetModuleHandleW(module.ModuleName), 0);
             }
 
             if (HookHandle == IntPtr.Zero)

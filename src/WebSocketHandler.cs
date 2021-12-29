@@ -1,70 +1,135 @@
 using Microsoft.Extensions.Logging;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Zergatul.Obs.InputOverlay.Events;
+using Zergatul.Obs.InputOverlay.Keyboard;
+using Zergatul.Obs.InputOverlay.Mouse;
 
 namespace Zergatul.Obs.InputOverlay
 {
     public class WebSocketHandler : IWebSocketHandler
     {
-        private readonly IInputHook _hook;
+        private readonly IRawDeviceInput _input;
+        //private readonly IMouseBallistics _mouseBallistics;
         private readonly ILogger _logger;
-        private readonly object _syncObject = new object();
         private readonly Random _rnd = new Random();
-        private List<WebSocketWrapper> _webSockets = new List<WebSocketWrapper>();
-        private WebSocketWrapper[] _wsBuffer = new WebSocketWrapper[16];
+        private readonly List<WebSocketWrapper> _webSockets = new List<WebSocketWrapper>();
+        private readonly EnumCache<KeyboardButton> _keyboardButtonCache = new EnumCache<KeyboardButton>();
+        private readonly EnumCache<MouseButton> _mouseButtonCache = new EnumCache<MouseButton>();
 
-        public WebSocketHandler(IInputHook hook, ILogger<WebSocketHandler> logger)
+        public WebSocketHandler(IRawDeviceInput input, /*IMouseBallistics mouseBallistics,*/ ILogger<WebSocketHandler> logger)
         {
-            _hook = hook;
+            _input = input;
+            //_mouseBallistics = mouseBallistics;
             _logger = logger;
 
-            _hook.ButtonAction += Hook_ButtonAction;
+            _input.ButtonAction += OnButtonAction;
+            _input.MoveAction += OnMoveAction;
+            //_mouseBallistics.MoveAction += OnMoveAction;
         }
 
-        private async void Hook_ButtonAction(object sender, ButtonEvent e)
+        private async void OnButtonAction(ButtonEvent evt)
         {
-            int count;
-            lock (_syncObject)
+            EventCategory category = GetCategory(evt);
+            using var copy = GetWebsockets(category);
+            if (copy.Count == 0)
             {
-                count = _webSockets.Count;
-                if (count > _wsBuffer.Length)
-                {
-                    _logger.LogWarning("WebSockets count greater than buffer size.");
-                    count = _wsBuffer.Length;
-                }
-                _webSockets.CopyTo(0, _wsBuffer, 0, count);
+                return;
             }
 
-            int eventType = e.Button < Button.Mouse1 ? 1 : 2;
-            var json = JsonSerializer.Serialize(new JavascriptEvent
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(256);
+            try
             {
-                type = eventType,
-                button = e.Button.ToString(),
-                pressed = e.Pressed,
-                count = e.Count
-            });
-            byte[] raw = Encoding.ASCII.GetBytes(json);
-
-            for (int i = 0; i < count; i++)
-            {
-                var wrapper = _wsBuffer[i];
-                if ((wrapper.EventMask & eventType) != 0)
+                // TODO: stop allocations
+                var bufferWriter = new StaticSizeArrayBufferWriter(buffer);
+                using (var writer = new Utf8JsonWriter(bufferWriter))
                 {
-                    try
+                    SerializeButtonEvent(writer, evt, category);
+                }
+
+                for (int i = 0; i < copy.Count; i++)
+                {
+                    var wrapper = copy.Array[i];
+                    if (wrapper.EventCategoryMask.HasFlag(category))
                     {
-                        await wrapper.WebSocket.SendAsync(new ReadOnlyMemory<byte>(raw), WebSocketMessageType.Text, true, CancellationToken.None);
-                    }
-                    catch (WebSocketException)
-                    {
-                        _logger?.LogInformation("WebSocketException on SendAsync.");
-                        RemoveWebSocket(wrapper);
+                        try
+                        {
+                            // TODO: can this be done in parallel?
+                            await wrapper.WebSocket.SendAsync(bufferWriter.GetWritten(), WebSocketMessageType.Text, true, CancellationToken.None);
+                        }
+                        catch (WebSocketException)
+                        {
+                            _logger?.LogInformation("WebSocketException on SendAsync.");
+                            RemoveWebSocket(wrapper);
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError($"Input_ButtonAction exception: {ex.Message}.");
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+        }
+
+        private async void OnMoveAction(MoveEvent evt)
+        {
+            /*if (evt.Source == MoveEventSource.RawMouse)
+            {
+                _mouseBallistics.AddMovement(evt.X, evt.Y);
+            }*/
+
+            EventCategory category = GetCategory(evt);
+            using var copy = GetWebsockets(category);
+            if (copy.Count == 0)
+            {
+                return;
+            }
+
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(256);
+            try
+            {
+                // TODO: stop allocations
+                var bufferWriter = new StaticSizeArrayBufferWriter(buffer);
+                using (var writer = new Utf8JsonWriter(bufferWriter))
+                {
+                    SerializeMoveEvent(writer, evt, category);
+                }
+
+                for (int i = 0; i < copy.Count; i++)
+                {
+                    var wrapper = copy.Array[i];
+                    if (wrapper.EventCategoryMask.HasFlag(category))
+                    {
+                        try
+                        {
+                            // TODO: can this be done in parallel?
+                            await wrapper.WebSocket.SendAsync(bufferWriter.GetWritten(), WebSocketMessageType.Text, true, CancellationToken.None);
+                        }
+                        catch (WebSocketException)
+                        {
+                            _logger?.LogInformation("WebSocketException on SendAsync.");
+                            RemoveWebSocket(wrapper);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError($"Input_MoveAction exception: {ex.Message}.");
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
             }
         }
 
@@ -75,7 +140,7 @@ namespace Zergatul.Obs.InputOverlay
                 WebSocket = ws,
                 CancellationSource = new CancellationTokenSource()
             };
-            lock (_syncObject)
+            lock (_webSockets)
             {
                 _webSockets.Add(wrapper);
             }
@@ -92,23 +157,15 @@ namespace Zergatul.Obs.InputOverlay
 
         public void Dispose()
         {
-            _hook.Dispose();
+            _input.Dispose();
 
-            int count;
-            lock (_syncObject)
+            lock (_webSockets)
             {
-                count = _webSockets.Count;
-                _webSockets.CopyTo(_wsBuffer);
-            }
-
-            for (int i = 0; i < count; i++)
-            {
-                RemoveWebSocket(_wsBuffer[i]);
-            }
-
-            lock (_syncObject)
-            {
-                _webSockets.Clear();
+                for (int i = 0; i < _webSockets.Count; i++)
+                {
+                    RemoveWebSocket(_webSockets[i]);
+                    i--;
+                }
             }
         }
 
@@ -126,7 +183,7 @@ namespace Zergatul.Obs.InputOverlay
 
             wrapper.CancellationSource.Cancel();
 
-            lock (_syncObject)
+            lock (_webSockets)
             {
                 int index = _webSockets.IndexOf(wrapper);
                 if (index >= 0)
@@ -140,12 +197,12 @@ namespace Zergatul.Obs.InputOverlay
 
         private async Task ReceiveLoop(WebSocketWrapper wrapper)
         {
+            const int bufferSize = 256;
+            var segment = new ArraySegment<byte>(new byte[bufferSize]);
             try
             {
                 while (true)
                 {
-                    var segment = new ArraySegment<byte>(new byte[256]);
-
                     WebSocketReceiveResult result;
                     try
                     {
@@ -169,16 +226,23 @@ namespace Zergatul.Obs.InputOverlay
                         return;
                     }
 
-                    var evt = JsonSerializer.Deserialize<ClientEvent>(segment.AsSpan(0, result.Count));
-                    if (evt.eventMask != null)
+                    if (!result.EndOfMessage)
                     {
-                        wrapper.EventMask = evt.eventMask.Value;
+                        _logger?.LogError("Message received partially.");
+                        RemoveWebSocket(wrapper);
+                        return;
                     }
-                    if (evt.ping != null)
+
+                    ClientMessage msg = DeserializeClientMessage(segment.AsSpan(0, result.Count));
+                    if (msg.Listen != null)
                     {
-                        if (wrapper.LastPing != evt.ping)
+                        wrapper.EventCategoryMask |= GetCategory(msg.Listen);
+                    }
+                    if (msg.Ping != null)
+                    {
+                        if (wrapper.LastPing != msg.Ping)
                         {
-                            _logger?.LogInformation("Receive ping data doesn't match.");
+                            _logger?.LogWarning("Received ping data doesn't match.");
                             RemoveWebSocket(wrapper);
                             return;
                         }
@@ -189,6 +253,7 @@ namespace Zergatul.Obs.InputOverlay
             catch (Exception ex)
             {
                 _logger?.LogError("ReceiveLoop -> " + ex.GetType().ToString() + " " + ex.Message);
+                RemoveWebSocket(wrapper);
             }
         }
 
@@ -210,26 +275,34 @@ namespace Zergatul.Obs.InputOverlay
                         wrapper.LastPing = _rnd.Next();
                     }
 
-                    var json = JsonSerializer.Serialize(new JavascriptEvent
-                    {
-                        type = 0,
-                        ping = wrapper.LastPing
-                    });
-                    byte[] raw = Encoding.ASCII.GetBytes(json);
-
+                    byte[] buffer = ArrayPool<byte>.Shared.Rent(256);
                     try
                     {
-                        await wrapper.WebSocket.SendAsync(new ReadOnlyMemory<byte>(raw), WebSocketMessageType.Text, true, wrapper.CancellationSource.Token);
+                        // TODO: stop allocations
+                        var bufferWriter = new StaticSizeArrayBufferWriter(buffer);
+                        using (var writer = new Utf8JsonWriter(bufferWriter))
+                        {
+                            SerializePingMessage(writer, wrapper.LastPing.Value);
+                        }
+
+                        try
+                        {
+                            await wrapper.WebSocket.SendAsync(bufferWriter.GetWritten(), WebSocketMessageType.Text, true, wrapper.CancellationSource.Token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            return;
+                        }
+                        catch (WebSocketException)
+                        {
+                            _logger?.LogInformation("WebSocketException on SendAsync.");
+                            RemoveWebSocket(wrapper);
+                            return;
+                        }
                     }
-                    catch (OperationCanceledException)
+                    finally
                     {
-                        return;
-                    }
-                    catch (WebSocketException)
-                    {
-                        _logger?.LogInformation("WebSocketException on SendAsync.");
-                        RemoveWebSocket(wrapper);
-                        return;
+                        ArrayPool<byte>.Shared.Return(buffer);
                     }
 
                     try
@@ -248,28 +321,245 @@ namespace Zergatul.Obs.InputOverlay
             }
         }
 
+        private static ClientMessage DeserializeClientMessage(Span<byte> span)
+        {
+            string listen = null;
+            int? ping = null;
+
+            Utf8JsonReader reader = new Utf8JsonReader(span);
+            while (reader.Read())
+            {
+                switch (reader.TokenType)
+                {
+                    case JsonTokenType.StartObject:
+                        if (reader.CurrentDepth != 0)
+                        {
+                            throw new InvalidClientRequestException("Client message can have only simple object.");
+                        }
+                        break;
+
+                    case JsonTokenType.EndObject:
+                        break;
+
+                    case JsonTokenType.PropertyName:
+                        if (reader.ValueTextEquals(ClientMessage.ListenEventProperty))
+                        {
+                            reader.Read();
+                            if (reader.TokenType == JsonTokenType.String)
+                            {
+                                listen = reader.GetString();
+                            }
+                            else
+                            {
+                                throw new InvalidClientRequestException("Listen property can only be string.");
+                            }
+                            break;
+                        }
+                        if (reader.ValueTextEquals(ClientMessage.PingProperty))
+                        {
+                            reader.Read();
+                            if (reader.TokenType == JsonTokenType.Number)
+                            {
+                                ping = reader.GetInt32();
+                            }
+                            else
+                            {
+                                throw new InvalidClientRequestException("Ping property can only be integer.");
+                            }
+                            break;
+                        }
+                        throw new InvalidClientRequestException($"Invalid property in client message: {reader.GetString()}.");
+
+                    default:
+                        throw new InvalidClientRequestException($"Invalid token in client message: {reader.TokenType}.");
+                }
+            }
+
+            return new ClientMessage(listen, ping);
+        }
+
+        private void SerializePingMessage(Utf8JsonWriter writer, int ping)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("type", "Ping");
+            writer.WriteNumber("ping", ping);
+            writer.WriteEndObject();
+        }
+
+        private void SerializeButtonEvent(Utf8JsonWriter writer, ButtonEvent evt, EventCategory category)
+        {
+            writer.WriteStartObject();
+            switch (category)
+            {
+                case EventCategory.Keyboard:
+                    writer.WriteString("type", nameof(EventCategory.Keyboard));
+                    writer.WriteString("button", _keyboardButtonCache[evt.KeyboardButton]);
+                    writer.WriteBoolean("pressed", evt.Pressed);
+                    writer.WritePropertyName("raw");
+                    writer.WriteStartObject();
+                    writer.WriteNumber("makecode", evt.RawKeyboard.MakeCode);
+                    writer.WriteNumber("flags", evt.RawKeyboard.Flags);
+                    writer.WriteNumber("vkey", evt.RawKeyboard.VKey);
+                    writer.WriteEndObject();
+                    break;
+
+                case EventCategory.MouseButtons:
+                    writer.WritePropertyName("type");
+                    writer.WriteStringValue(nameof(EventCategory.MouseButtons));
+                    writer.WritePropertyName("button");
+                    writer.WriteStringValue(_mouseButtonCache[evt.MouseButton]);
+                    if (evt.MouseButton == MouseButton.MouseWheelDown || evt.MouseButton == MouseButton.MouseWheelUp)
+                    {
+                        writer.WritePropertyName("count");
+                        writer.WriteNumberValue(evt.Count.Value);
+                    }
+                    else
+                    {
+                        writer.WritePropertyName("pressed");
+                        writer.WriteBooleanValue(evt.Pressed);
+                    }
+                    break;
+
+                default:
+                    throw new NotImplementedException();
+            }
+
+            writer.WriteEndObject();
+        }
+
+        private void SerializeMoveEvent(Utf8JsonWriter writer, MoveEvent evt, EventCategory category)
+        {
+            writer.WriteStartObject();
+            switch (category)
+            {
+                case EventCategory.RawMouseMovement:
+                    writer.WritePropertyName("type");
+                    writer.WriteStringValue(nameof(EventCategory.RawMouseMovement));
+                    writer.WriteNumber("dx", evt.X);
+                    writer.WriteNumber("dy", evt.Y);
+                    break;
+
+                case EventCategory.MouseMovement:
+                    writer.WritePropertyName("type");
+                    writer.WriteStringValue(nameof(EventCategory.MouseMovement));
+                    writer.WriteNumber("dx", evt.X);
+                    writer.WriteNumber("dy", evt.Y);
+                    break;
+
+                default:
+                    throw new NotImplementedException();
+            }
+
+            writer.WriteEndObject();
+        }
+
+        private static EventCategory GetCategory(string category)
+        {
+            return category switch
+            {
+                nameof(EventCategory.Keyboard) => EventCategory.Keyboard,
+                nameof(EventCategory.MouseButtons) => EventCategory.MouseButtons,
+                nameof(EventCategory.RawMouseMovement) => EventCategory.RawMouseMovement,
+                nameof(EventCategory.MouseMovement) => EventCategory.MouseMovement,
+                _ => throw new NotImplementedException(),
+            };
+        }
+
+        private static EventCategory GetCategory(ButtonEvent evt)
+        {
+            if (evt.KeyboardButton != KeyboardButton.None)
+            {
+                return EventCategory.Keyboard;
+            }
+
+            if (evt.MouseButton != MouseButton.None)
+            {
+                return EventCategory.MouseButtons;
+            }
+
+            throw new InvalidOperationException("Unknown category.");
+        }
+
+        private static EventCategory GetCategory(MoveEvent evt)
+        {
+            if (evt.Source == MoveEventSource.RawMouse)
+            {
+                return EventCategory.RawMouseMovement;
+            }
+
+            if (evt.Source == MoveEventSource.Mouse)
+            {
+                return EventCategory.MouseMovement;
+            }
+
+            throw new InvalidOperationException("Unknown category.");
+        }
+
+        private CopyDisposable GetWebsockets(EventCategory category)
+        {
+            lock (_webSockets)
+            {
+                if (_webSockets.Count == 0)
+                {
+                    return new CopyDisposable(null, 0);
+                }
+
+                WebSocketWrapper[] array = ArrayPool<WebSocketWrapper>.Shared.Rent(_webSockets.Count);
+                int count = 0;
+                for (int i = 0; i < _webSockets.Count; i++)
+                {
+                    if (_webSockets[i].EventCategoryMask.HasFlag(category))
+                    {
+                        array[count++] = _webSockets[i];
+                    }
+                }
+
+                return new CopyDisposable(array, count);
+            }
+        }
+
         private class WebSocketWrapper
         {
             public WebSocket WebSocket;
-            public int EventMask;
+            public EventCategory EventCategoryMask;
             public CancellationTokenSource CancellationSource;
             public int? LastPing;
             public volatile bool Closing;
         }
 
-        private class JavascriptEvent
+        private readonly struct ClientMessage
         {
-            public int type { get; set; }
-            public string button { get; set; }
-            public bool pressed { get; set; }
-            public int? count { get; set; }
-            public int? ping { get; set; }
+            public string Listen { get; }
+            public int? Ping { get; }
+
+            public ClientMessage(string listen, int? ping)
+            {
+                Listen = listen;
+                Ping = ping;
+            }
+
+            public static readonly byte[] ListenEventProperty = Encoding.UTF8.GetBytes("listen");
+            public static readonly byte[] PingProperty = Encoding.UTF8.GetBytes("ping");
         }
 
-        private class ClientEvent
+        private struct CopyDisposable : IDisposable
         {
-            public int? eventMask { get; set; }
-            public int? ping { get; set; }
+            public WebSocketWrapper[] Array { get; }
+            public int Count { get; }
+
+            public CopyDisposable(WebSocketWrapper[] array, int count)
+            {
+                Array = array;
+                Count = count;
+            }
+
+            public void Dispose()
+            {
+                if (Array != null)
+                {
+                    ArrayPool<WebSocketWrapper>.Shared.Return(Array);
+                }
+            }
         }
     }
 }
