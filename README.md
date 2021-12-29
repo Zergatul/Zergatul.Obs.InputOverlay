@@ -15,6 +15,7 @@ Input overlay plugin for OBS. Supported systems: Windows 10 x64
     - Check `Use custom framerate`, and set FPS to `60`, if you are streaming/recording in 60 FPS
     - Check `Shutdown source when not visible`. This will allow you to hide/show source after you restarted the server
     - Do the same for mouse: `URL`: `http://localhost:5001/default-mouse.html`, `Width`: `250`, `Height`: `350`
+    - If you want mouse movement indicator, use this: `http://localhost:5001/mouse-movement.html`, `Width`: `800`, `Height`: `800`
 
 ![keyboard source](https://github.com/Zergatul/Zergatul.Obs.InputOverlay/blob/master/docs/keyboard-source.png?raw=true)
 
