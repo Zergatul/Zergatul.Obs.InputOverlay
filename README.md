@@ -15,7 +15,7 @@ Input overlay plugin for OBS. Supported systems: Windows 10 x64
     - Check `Use custom framerate`, and set FPS to `60`, if you are streaming/recording in 60 FPS
     - Check `Shutdown source when not visible`. This will allow you to hide/show source after you restarted the server
     - Do the same for mouse: `URL`: `http://localhost:5001/default-mouse.html`, `Width`: `250`, `Height`: `350`
-    - If you want mouse movement indicator, use this: `http://localhost:5001/mouse-movement.html`, `Width`: `800`, `Height`: `800`
+    - ![Other modules](docs/Modules.md)
 
 ![keyboard source](https://github.com/Zergatul/Zergatul.Obs.InputOverlay/blob/master/docs/keyboard-source.png?raw=true)
 
@@ -24,7 +24,7 @@ Input overlay plugin for OBS. Supported systems: Windows 10 x64
 2. You can show more keys, change style, colors, animations if you are familiar with HTML and CSS. Check `wwwroot` folder within application folder. It contains HTML, CSS and JavaScript files. You can get all supported key names from [KeyboardButton.cs](src/Keyboard/KeyboardButton.cs) file.
 3. [Customizing mouse](docs/CustomizingMouse.md).
 4. If you need to restart server application, you will need to hide sources in OBS, and show them again.
-5. If you want to play on one PC, and run OBS on another you need to run executable with parameter: `--urls http://<IP address>:<port>/`. IP address should be local network address of PC where you play game and run executable. You can choose port whatever you like, but it is better not use ports lower than 1000. If you have firewall make use you opened incoming TCP port. Example: `Zergatul.Obs.InputOverlay.exe --urls http://192.168.1.123:12345/`. If everything is fine, you should see in the log: `Now listening on: http://192.168.1.123:12345`.
+5. If you want to play on one PC, and run OBS on another you need to run executable with parameter: `--urls http://<IP address>:<port>/`. IP address should be local network address of PC where you play game and run executable. You can choose port whatever you like, but it is better not use ports lower than 1000. If you have firewall make sure you opened incoming TCP port. Example: `Zergatul.Obs.InputOverlay.exe --urls http://192.168.1.123:12345/`. If everything is fine, you should see in the log: `Now listening on: http://192.168.1.123:12345`.
 
 # Troubleshooting
 If you encounter any problems with running Browser Source in OBS, you can open keyboard/mouse URL's in your browser and check for errors in developer console. In `<style>` element uncomment line: `background-color: black;`. Now open URL in your browser with Developer Tools opened (usually this is `F12` key). Don't forget to comment out this line again if you start using overlay in OBS. Sometimes browser source in OBS caches styles, you can use `Refresh cache of current page` button.

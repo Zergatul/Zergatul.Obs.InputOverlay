@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script>
+        // raw mouse sensitivy, also called DPI
+        const cpi = 1200;
+
+        // speed value will be updated only after specified period
+        const refreshMs = 100;
+
+        const decimals = 2;
+
+        // this is just for visual, no effect on value displayed
+        const units = 'inch/sec';
+
+        // speed in inches/sec is multiplied by this value, you can use this settings to convert to different units
+        const multiplier = 1;
+        // const multiplier = 1.0 / 39; // meters per second
+        // const multiplier = 1.0 / 10.936; // km/hour
+        // const multiplier = 1.0 / 17.6; // miles/hour
+
+        // use this table to specify color gradient for different speed values
+        // first element should always have value=0
+        const gradientTable = [
+            // red/green/blue [0..256), opacity [0..1], speed - mouse speed
+            { red: 255, green: 255, blue: 255, opacity: 1.0, speed: 0.0 }, // white at speed=0
+            { red: 255, green: 255, blue: 71, opacity: 1.0, speed: 10 }, // yellow at speed=10
+            { red: 255, green: 71, blue: 71, opacity: 1.0, speed: 20 }, // red at speed = 20
+
+            // single color example
+            // uncomment line below to use it, and remove above lines
+            // { red: 255, green: 255, blue: 255, opacity: 1.0, speed: 0.0 }
+        ];
+    </script>
+    <style>
+        body {
+            /*background-color: black;*/ /* uncomment this to debug in browser */
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            text-align: center;
+        }
+        #mouse-speed {
+            display: inline-block;
+            font-family: Verdana;
+            font-size: 60px;
+        }
+    </style>
+    <script>
+        let queue = new Array();
+
+        function listenWebSocket() {
+            let ws = new WebSocket('ws://' + location.host + '/ws');
+            ws.onopen = function () {
+                // listen for MoveEvent's
+                ws.send(JSON.stringify({ listen: 'RawMouseMovement' }));
+            };
+            ws.onmessage = function (event) {
+                var data = JSON.parse(event.data);
+            
+                if (data.type == 'Ping') {
+                    // reply to ping messages
+                    ws.send(JSON.stringify({ ping: data.ping }));
+                    return;
+                }
+
+                if (data.type == 'RawMouseMovement') {
+                    // MoveEvent
+                    queue.push(data);
+                }
+            };
+        }
+
+        function startRefreshTimer() {
+            let hex = function (val) {
+                if (val < 0) {
+                    val = 0;
+                }
+                if (val >= 256) {
+                    val = 255;
+                }
+                if (val < 16) {
+                    return '0' + val.toString(16);
+                } else {
+                    return val.toString(16);
+                }
+            };
+            setInterval(function () {
+                let distance = 0;
+                for (let i = 0; i < queue.length; i++) {
+                    let dx = queue[i].dx;
+                    let dy = queue[i].dy;
+                    distance += Math.sqrt(dx * dx + dy * dy);
+                }
+                queue.splice(0, queue.length);
+                let speedInchPerSec = 1000 * distance / refreshMs / cpi;
+                let speed = multiplier * speedInchPerSec;
+
+                let element = document.getElementById('mouse-speed');
+                element.innerText = speed.toFixed(decimals) + ' ' + units;
+
+                let curr = null;
+                let next = null;
+                for (let i = 0; i < gradientTable.length; i++) {
+                    if (gradientTable[i].speed >= speed) {
+                        next = gradientTable[i];
+                        if (i > 0) {
+                            curr = gradientTable[i - 1];
+                        } else {
+                            curr = next;
+                        }
+                        break;
+                    }
+                }
+
+                if (next == null) {
+                    curr = next = gradientTable[gradientTable.length - 1];
+                }
+
+                let delta = next.speed - curr.speed;
+                if (delta == 0) {
+                    element.style.color = '#' + hex(curr.red) + hex(curr.green) + hex(curr.blue);
+                    element.style.opacity = curr.opacity;
+                } else {
+                    let factor = (speed - curr.speed) / delta;
+                    let r = curr.red + Math.round((next.red - curr.red) * factor);
+                    let g = curr.green + Math.round((next.green - curr.green) * factor);
+                    let b = curr.blue + Math.round((next.blue - curr.blue) * factor);
+                    let o = curr.opacity + (next.opacity - curr.opacity) * factor;
+                    element.style.color = '#' + hex(r) + hex(g) + hex(b);
+                    element.style.opacity = Math.round(o * 1000) / 1000;
+                }
+
+            }, refreshMs);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            listenWebSocket();
+            startRefreshTimer();
+        });
+    </script>
+</head>
+<body>
+    <div id="mouse-speed"></div>
+</body>
+</html>

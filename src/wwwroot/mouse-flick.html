@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script>
+        // ms, check mouse horizontal movement in this time interval
+        const checkingInterval = 400;
+
+        // in mouse raw units
+        // adjust this to match your DPI and mouse sensitivity in game
+        const flickMovementThreshold = 1000;
+
+        // milliseconds, without fadeout animation
+        const textDisplayInterval = 250;
+    </script>
+    <style>
+        body {
+            /*background-color: black;*/ /* uncomment this to debug in browser */
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            text-align: center;
+        }
+        #mouse-flick {
+            display: inline-block;
+            color: red;
+            text-shadow: 0 0 4px rgb(253, 253, 18);
+            font-family: Verdana;
+            font-size: 60px;
+        }
+        #mouse-flick.fadeout {
+            animation: fadeout 0.25s ease-out; /* fade animation */
+            animation-fill-mode: forwards;
+        }
+        @keyframes fadeout {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
+        }
+    </style>
+    <script>
+        let listHead = null;
+        let listTail = null;
+        let deltaX = 0;
+        let state = null;
+
+        function listenWebSocket() {
+            let ws = new WebSocket('ws://' + location.host + '/ws');
+            ws.onopen = function () {
+                // listen for MoveEvent's
+                ws.send(JSON.stringify({ listen: 'RawMouseMovement' }));
+            };
+            ws.onmessage = function (event) {
+                var data = JSON.parse(event.data);
+            
+                if (data.type == 'Ping') {
+                    // reply to ping messages
+                    ws.send(JSON.stringify({ ping: data.ping }));
+                    return;
+                }
+
+                if (data.type == 'RawMouseMovement') {
+                    // MoveEvent
+                    processEvent(data);
+                }
+            };
+        }
+
+        function processEvent(evt) {
+            let now = window.performance.now();
+            evt.time = now;
+            if (listHead == null) {
+                listHead = listTail = evt;
+                deltaX = evt.dx;
+                return;
+            } else {
+                listTail.next = evt;
+                listTail = evt;
+                deltaX += evt.dx;
+            }
+
+            while (listHead && (now - listHead.time) > checkingInterval) {
+                deltaX -= listHead.dx;
+                listHead = listHead.next;
+                if (!listHead) {
+                    listTail = null;
+                }
+            }
+
+            if (Math.abs(deltaX) > flickMovementThreshold && state == null) {
+                let div = document.getElementById('mouse-flick');
+                div.style.display = '';
+                div.classList.remove('fadeout');
+                state = 'show';
+                listHead = listTail = null;
+                deltaX = 0;
+                setTimeout(function () {
+                    div.classList.add('fadeout');
+                    state = null;
+                }, textDisplayInterval);
+            }
+        }
+
+        function initDiv() {
+            let div = document.getElementById('mouse-flick');
+            div.style.display = 'none';
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initDiv();
+            listenWebSocket();
+        });
+    </script>
+</head>
+<body>
+    <div id="mouse-flick">Flick!</div>
+</body>
+</html>

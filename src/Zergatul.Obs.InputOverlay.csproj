@@ -7,7 +7,7 @@
     <RootNamespace>Zergatul.Obs.InputOverlay</RootNamespace>
     <Authors>Zergatul</Authors>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <Version>2.0.0</Version>
+    <Version>2.0.1</Version>
     <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
     <StartupObject>Zergatul.Obs.InputOverlay.Program</StartupObject>
     <PackageProjectUrl>https://github.com/Zergatul/Zergatul.Obs.InputOverlay</PackageProjectUrl>
@@ -30,7 +30,13 @@
     <Content Update="wwwroot\default-mouse.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Update="wwwroot\mouse-flick.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Update="wwwroot\mouse-movement.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="wwwroot\mouse-speed.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Update="wwwroot\mouse.svg">
