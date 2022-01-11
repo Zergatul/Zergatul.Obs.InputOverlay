@@ -167,6 +167,8 @@ namespace Zergatul.Obs.InputOverlay
                     i--;
                 }
             }
+
+            _logger?.LogDebug("Disposed.");
         }
 
         private void RemoveWebSocket(WebSocketWrapper wrapper)

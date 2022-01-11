@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Threading;
+using Zergatul.Obs.InputOverlay.Device;
 using Zergatul.Obs.InputOverlay.Events;
 using Zergatul.Obs.InputOverlay.Keyboard;
 using Zergatul.Obs.InputOverlay.Mouse;
@@ -10,24 +12,37 @@ using Zergatul.Obs.InputOverlay.Mouse;
 namespace Zergatul.Obs.InputOverlay
 {
     using static WinApi;
+    using static WinApiHelper;
 
     internal class RawDeviceInput : IRawDeviceInput
     {
         private const string WindowClass = "Input Overlay Hidden Window Class";
         private const string WindowName = "Input Overlay Hidden Window Name";
+        private const int BufferSize = 1024;
 
         public event Action<ButtonEvent> ButtonAction;
         public event Action<MoveEvent> MoveAction;
 
+        private readonly IRawDeviceFactory _factory;
         private readonly ILogger _logger;
         private readonly WndProc _wndProc;
         private readonly Thread _wndThread;
         private IntPtr _hWnd;
+        private IntPtr _buffer;
+        private int _rawInputHeaderSize;
+        private int _rawHidDataOffset;
+        private Dictionary<IntPtr, RawDevice> _devices;
 
-        public RawDeviceInput(ILogger<RawDeviceInput> logger)
+        public RawDeviceInput(IRawDeviceFactory factory, ILogger<RawDeviceInput> logger)
         {
+            _factory = factory;
             _logger = logger;
             _wndProc = WndProc;
+
+            _buffer = Marshal.AllocHGlobal(BufferSize);
+            _rawInputHeaderSize = Marshal.SizeOf(typeof(RAWINPUTHEADER));
+            _rawHidDataOffset = Marshal.OffsetOf<RAWINPUT>(nameof(RAWINPUT.hid)).ToInt32() + Marshal.SizeOf<RAWHID>();
+            _devices = new Dictionary<IntPtr, RawDevice>();
 
             using (var identity = WindowsIdentity.GetCurrent())
             {
@@ -48,6 +63,13 @@ namespace Zergatul.Obs.InputOverlay
                 _wndThread.Join();
                 _hWnd = IntPtr.Zero;
             }
+
+            if (_buffer != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(_buffer);
+            }
+
+            _logger?.LogDebug("Disposed.");
         }
 
         private void ThreadFunc()
@@ -62,10 +84,9 @@ namespace Zergatul.Obs.InputOverlay
             ushort atom = RegisterClassEx(ref wc);
             if (atom == 0)
             {
-                throw new WinApiException("Cannot register class.");
+                _logger?.LogError($"Cannot register window class {FormatWin32Error(Marshal.GetLastWin32Error())}.");
+                return;
             }
-
-            _logger?.LogDebug($"Register window class atom: {atom}.");
 
             _hWnd = CreateWindowExW(
                 dwExStyle: 0,
@@ -82,31 +103,40 @@ namespace Zergatul.Obs.InputOverlay
                 lpParam: IntPtr.Zero);
             if (_hWnd == IntPtr.Zero)
             {
-                throw new WinApiException("Cannot create window.");
+                _logger?.LogError($"Cannot create window {FormatWin32Error(Marshal.GetLastWin32Error())}.");
+                return;
             }
-
-            _logger?.LogDebug($"Window handle: {_hWnd}.");
 
             RAWINPUTDEVICE[] devices;
 
             devices = new RAWINPUTDEVICE[1];
             devices[0].usUsagePage = RawInputDeviceUsagePage.HID_USAGE_PAGE_GENERIC;
             devices[0].usUsage = RawInputDeviceUsage.HID_USAGE_GENERIC_MOUSE;
-            devices[0].dwFlags = RawInputDeviceFlags.RIDEV_INPUTSINK;
+            devices[0].dwFlags = RawInputDeviceFlags.RIDEV_INPUTSINK | RawInputDeviceFlags.RIDEV_DEVNOTIFY;
             devices[0].hwndTarget = _hWnd;
             if (!RegisterRawInputDevices(devices, 1, Marshal.SizeOf(typeof(RAWINPUTDEVICE))))
             {
-                throw new WinApiException("Cannot register raw mouse input.");
+                _logger?.LogError($"Cannot register raw mouse input {FormatWin32Error(Marshal.GetLastWin32Error())}.");
             }
 
             devices = new RAWINPUTDEVICE[1];
             devices[0].usUsagePage = RawInputDeviceUsagePage.HID_USAGE_PAGE_GENERIC;
             devices[0].usUsage = RawInputDeviceUsage.HID_USAGE_GENERIC_KEYBOARD;
-            devices[0].dwFlags = RawInputDeviceFlags.RIDEV_INPUTSINK;
+            devices[0].dwFlags = RawInputDeviceFlags.RIDEV_INPUTSINK | RawInputDeviceFlags.RIDEV_DEVNOTIFY;
             devices[0].hwndTarget = _hWnd;
             if (!RegisterRawInputDevices(devices, 1, Marshal.SizeOf(typeof(RAWINPUTDEVICE))))
             {
-                throw new WinApiException("Cannot register raw keyboard input.");
+                _logger?.LogError($"Cannot register raw keyboard input {FormatWin32Error(Marshal.GetLastWin32Error())}.");
+            }
+
+            devices = new RAWINPUTDEVICE[1];
+            devices[0].usUsagePage = RawInputDeviceUsagePage.HID_USAGE_PAGE_GENERIC;
+            devices[0].usUsage = RawInputDeviceUsage.HID_USAGE_GENERIC_GAMEPAD;
+            devices[0].dwFlags = RawInputDeviceFlags.RIDEV_INPUTSINK | RawInputDeviceFlags.RIDEV_DEVNOTIFY;
+            devices[0].hwndTarget = _hWnd;
+            if (!RegisterRawInputDevices(devices, 1, Marshal.SizeOf(typeof(RAWINPUTDEVICE))))
+            {
+                _logger?.LogError($"Cannot register raw gamepad input {FormatWin32Error(Marshal.GetLastWin32Error())}.");
             }
 
             while (GetMessage(out MSG msg, IntPtr.Zero, 0, 0))
@@ -118,35 +148,90 @@ namespace Zergatul.Obs.InputOverlay
 
         private IntPtr WndProc(IntPtr hWnd, WindowsMessage msg, IntPtr wParam, IntPtr lParam)
         {
-            if (msg == WindowsMessage.WM_INPUT)
+            switch (msg)
             {
-                int size = Marshal.SizeOf(typeof(RAWINPUT));
-                int headerSize = Marshal.SizeOf(typeof(RAWINPUTHEADER));
-                if (GetRawInputData(lParam, RID_INPUT, out RAWINPUT data, ref size, headerSize) == -1)
-                {
-                    _logger?.LogWarning($"GetRawInputData error.");
-                }
-                else
-                {
-                    if (data.header.dwType == RawInputHeaderType.RIM_TYPEKEYBOARD)
-                    {
-                        ProcessKeyboardEvent(data.keyboard);
-                    }
+                case WindowsMessage.WM_INPUT:
+                    ProcessWmInputMessage(lParam);
+                    break;
 
-                    if (data.header.dwType == RawInputHeaderType.RIM_TYPEMOUSE)
-                    {
-                        ProcessMouseEvent(data.mouse);
-                    }
-                }
-            }
+                case WindowsMessage.WM_INPUT_DEVICE_CHANGE:
+                    ProcessWmInputDeviceChangeMessage(wParam, lParam);
+                    break;
 
-            if (msg == WindowsMessage.WM_DESTROY)
-            {
-                PostQuitMessage(0);
-                return IntPtr.Zero;
+                case WindowsMessage.WM_DESTROY:
+                    PostQuitMessage(0);
+                    break;
             }
 
             return DefWindowProc(hWnd, msg, wParam, lParam);
+        }
+
+        private void ProcessWmInputMessage(IntPtr lParam)
+        {
+            IntPtr buffer = _buffer;
+            int size = BufferSize;
+            if (GetRawInputData(lParam, GetRawInputDataCommand.RID_INPUT, buffer, ref size, _rawInputHeaderSize) == -1)
+            {
+                _logger?.LogError($"GetRawInputData error {FormatWin32Error(Marshal.GetLastWin32Error())}.");
+            }
+            else
+            {
+                RAWINPUT data = Marshal.PtrToStructure<RAWINPUT>(buffer);
+
+                if (data.header.dwType == RawInputType.RIM_TYPEKEYBOARD)
+                {
+                    ProcessKeyboardEvent(data.keyboard);
+                }
+
+                if (data.header.dwType == RawInputType.RIM_TYPEMOUSE)
+                {
+                    ProcessMouseEvent(data.mouse);
+                }
+
+                if (data.header.dwType == RawInputType.RIM_TYPEHID)
+                {
+                    byte[] bytes = new byte[data.hid.dwCount * data.hid.dwSizeHid];
+                    Marshal.Copy(buffer + _rawHidDataOffset, bytes, 0, bytes.Length);
+                    var sb = new System.Text.StringBuilder(bytes.Length * 2);
+                    for (int i = 0; i < bytes.Length; i++)
+                    {
+                        if (bytes[i] < 16)
+                        {
+                            sb.Append('0');
+                            sb.Append(bytes[i].ToString("x2"));
+                        }
+                        else
+                        {
+                            sb.Append(bytes[i].ToString("x2"));
+                        }
+                    }
+                    _logger?.LogDebug($"HID=" + sb.ToString());
+                }
+            };
+        }
+
+        private void ProcessWmInputDeviceChangeMessage(IntPtr wParam, IntPtr lParam)
+        {
+            const int GIDC_ARRIVAL = 1;
+            const int GIDC_REMOVAL = 2;
+            if (wParam.ToInt64() == GIDC_ARRIVAL)
+            {
+                RawDevice device = _factory.FromHDevice(lParam);
+                _logger?.LogInformation($"Device added. {device}.");
+                _devices.Add(lParam, device);
+            }
+            if (wParam.ToInt64() == GIDC_REMOVAL)
+            {
+                if (_devices.TryGetValue(lParam, out var device))
+                {
+                    _logger?.LogInformation($"Device removed. {device}.");
+                    _devices.Remove(lParam);
+                }
+                else
+                {
+                    _logger?.LogInformation($"Device removed, but not present in the dictionary.");
+                }
+            }
         }
 
         private void ProcessKeyboardEvent(RAWKEYBOARD keyboard)
