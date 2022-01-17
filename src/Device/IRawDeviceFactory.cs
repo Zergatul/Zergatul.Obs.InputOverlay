@@ -2,7 +2,7 @@
 
 namespace Zergatul.Obs.InputOverlay.Device
 {
-    public interface IRawDeviceFactory
+    public interface IRawDeviceFactory : IDisposable
     {
         RawDevice FromHDevice(IntPtr hDevice);
     }

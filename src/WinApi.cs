@@ -30,6 +30,9 @@ namespace Zergatul.Obs.InputOverlay
         [DllImport("kernel32.dll")]
         public static extern int GetLastError();
 
+        [DllImport("kernel32.dll", EntryPoint = "RtlMoveMemory", SetLastError = false)]
+        public static extern void CopyMemory(IntPtr Destination, IntPtr Source, uint Length);
+
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.U2)]
         public static extern ushort RegisterClassEx([In] ref WNDCLASSEX lpwcx);
@@ -112,9 +115,77 @@ namespace Zergatul.Obs.InputOverlay
         [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         public static extern int GetRawInputDeviceInfoW(IntPtr hDevice, GetRawDeviceInfoCommand uiCommand, StringBuilder pData, ref int pcbSize);
 
-        [DllImport("hid.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        public static extern int GetRawInputDeviceInfoW(IntPtr hDevice, GetRawDeviceInfoCommand uiCommand, IntPtr pData, ref int pcbSize);
+
+        [DllImport("hid.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool HidD_GetProductString(IntPtr HidDeviceObject, StringBuilder Buffer, int BufferLength);
+        public static extern bool HidD_GetProductString(
+            [In] IntPtr HidDeviceObject,
+            [Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder Buffer,
+            [In] int BufferLength);
+
+        [DllImport("hid.dll", SetLastError = true)]
+        public static extern HidPStatus HidP_GetCaps(
+            [In] IntPtr PreparsedData,
+            ref HIDP_CAPS Capabilities);
+
+        [DllImport("hid.dll", SetLastError = true)]
+        public static extern HidPStatus HidP_GetButtonCaps(
+            [In] HIDP_REPORT_TYPE ReportType,
+            [Out] HIDP_BUTTON_CAPS[] ButtonCaps,
+            ref ushort ButtonCapsLength,
+            [In] IntPtr PreparsedData);
+
+        [DllImport("hid.dll", SetLastError = true)]
+        public static extern HidPStatus HidP_GetValueCaps(
+            [In] HIDP_REPORT_TYPE ReportType,
+            [Out] HIDP_VALUE_CAPS[] ValueCaps,
+            ref ushort ValueCapsLength,
+            [In] IntPtr PreparsedData);
+
+        [DllImport("hid.dll", SetLastError = true)]
+        public static extern HidPStatus HidP_GetUsagesEx(
+            [In] HIDP_REPORT_TYPE ReportType,
+            [In] ushort LinkCollection,
+            [In, Out] USAGE_AND_PAGE[] ButtonList,
+            [In, Out] ref uint UsageLength,
+            [In] IntPtr PreparsedData,
+            [In] IntPtr Report,
+            [In] uint ReportLength);
+
+        [DllImport("hid.dll", SetLastError = true)]
+        public static extern HidPStatus HidP_GetUsageValue(
+            [In] HIDP_REPORT_TYPE ReportType,
+            [In] RawInputDeviceUsagePage UsagePage,
+            [In] ushort LinkCollection,
+            [In] ushort Usage,
+            [Out] out uint UsageValue,
+            [In] IntPtr PreparsedData,
+            [In] IntPtr Report,
+            [In] uint ReportLength);
+
+        [DllImport("hid.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool HidD_GetSerialNumberString(
+            [In] IntPtr HidDeviceObject,
+            [Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder Buffer,
+            [In] int BufferLength);
+
+        [DllImport("hid.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool HidD_GetIndexedString(
+            [In] IntPtr HidDeviceObject,
+            [In] int StringIndex,
+            [Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder Buffer,
+            [In] int BufferLength);
+
+        [DllImport("hid.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool HidD_GetManufacturerString(
+          [In] IntPtr HidDeviceObject,
+          [Out, MarshalAs(UnmanagedType.LPStr)] StringBuilder Buffer,
+          [In] int BufferLength);
 
         #region Structures
 
@@ -214,8 +285,8 @@ namespace Zergatul.Obs.InputOverlay
         [StructLayout(LayoutKind.Sequential)]
         public struct RAWHID
         {
-            public int dwSizeHid;
-            public int dwCount;
+            public uint dwSizeHid;
+            public uint dwCount;
             //BYTE[1] bRawData;
         }
 
@@ -269,6 +340,203 @@ namespace Zergatul.Obs.InputOverlay
             public int dwVersionNumber;
             public RawInputDeviceUsagePage usUsagePage;
             public RawInputDeviceUsage usUsage;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct HIDP_CAPS
+        {
+            public RawInputDeviceUsage Usage;
+            public RawInputDeviceUsagePage UsagePage;
+            public ushort InputReportByteLength;
+            public ushort OutputReportByteLength;
+            public ushort FeatureReportByteLength;
+
+            public ushort Reserved01;
+            public ushort Reserved02;
+            public ushort Reserved03;
+            public ushort Reserved04;
+            public ushort Reserved05;
+            public ushort Reserved06;
+            public ushort Reserved07;
+            public ushort Reserved08;
+            public ushort Reserved09;
+            public ushort Reserved10;
+            public ushort Reserved11;
+            public ushort Reserved12;
+            public ushort Reserved13;
+            public ushort Reserved14;
+            public ushort Reserved15;
+            public ushort Reserved16;
+            public ushort Reserved17;
+
+            public ushort NumberLinkCollectionNodes;
+
+            public ushort NumberInputButtonCaps;
+            public ushort NumberInputValueCaps;
+            public ushort NumberInputDataIndices;
+
+            public ushort NumberOutputButtonCaps;
+            public ushort NumberOutputValueCaps;
+            public ushort NumberOutputDataIndices;
+
+            public ushort NumberFeatureButtonCaps;
+            public ushort NumberFeatureValueCaps;
+            public ushort NumberFeatureDataIndices;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        public struct HIDP_BUTTON_CAPS
+        {
+            [FieldOffset(0)]
+            public RawInputDeviceUsagePage UsagePage;
+            [FieldOffset(2)]
+            public byte ReportID;
+            [FieldOffset(3)]
+            public byte IsAlias;
+            [FieldOffset(4)]
+            public ushort BitField;
+            [FieldOffset(6)]
+            public ushort LinkCollection;
+            [FieldOffset(8)]
+            public RawInputDeviceUsage LinkUsage;
+            [FieldOffset(10)]
+            public RawInputDeviceUsagePage LinkUsagePage;
+            [FieldOffset(12)]
+            public byte IsRange;
+            [FieldOffset(13)]
+            public byte IsStringRange;
+            [FieldOffset(14)]
+            public byte IsDesignatorRange;
+            [FieldOffset(15)]
+            public byte IsAbsolute;
+            [FieldOffset(16)]
+            public uint Reserved01;
+            [FieldOffset(20)]
+            public uint Reserved02;
+            [FieldOffset(24)]
+            public uint Reserved03;
+            [FieldOffset(28)]
+            public uint Reserved04;
+            [FieldOffset(32)]
+            public uint Reserved05;
+            [FieldOffset(36)]
+            public uint Reserved06;
+            [FieldOffset(40)]
+            public uint Reserved07;
+            [FieldOffset(44)]
+            public uint Reserved08;
+            [FieldOffset(48)]
+            public uint Reserved09;
+            [FieldOffset(52)]
+            public uint Reserved10;
+            [FieldOffset(56)]
+            public _Range Range;
+            [FieldOffset(56)]
+            public _NotRange NotRange;
+
+            [StructLayout(LayoutKind.Sequential)]
+            public struct _Range
+            {
+                public ushort UsageMin, UsageMax;
+                public ushort StringMin, StringMax;
+                public ushort DesignatorMin, DesignatorMax;
+                public ushort DataIndexMin, DataIndexMax;
+            }
+
+            [StructLayout(LayoutKind.Sequential)]
+            public struct _NotRange
+            {
+                public ushort Usage, Reserved1;
+                public ushort StringIndex, Reserved2;
+                public ushort DesignatorIndex, Reserved3;
+                public ushort DataIndex, Reserved4;
+            }
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        public struct HIDP_VALUE_CAPS
+        {
+            [FieldOffset(0)]
+            public RawInputDeviceUsagePage UsagePage;
+            [FieldOffset(2)]
+            public byte ReportID;
+            [FieldOffset(3)]
+            public byte IsAlias;
+            [FieldOffset(4)]
+            public ushort BitField;
+            [FieldOffset(6)]
+            public ushort LinkCollection;
+            [FieldOffset(8)]
+            public RawInputDeviceUsage LinkUsage;
+            [FieldOffset(10)]
+            public RawInputDeviceUsagePage LinkUsagePage;
+            [FieldOffset(12)]
+            public byte IsRange;
+            [FieldOffset(13)]
+            public byte IsStringRange;
+            [FieldOffset(14)]
+            public byte IsDesignatorRange;
+            [FieldOffset(15)]
+            public byte IsAbsolute;
+            [FieldOffset(16)]
+            public byte HasNull;
+            [FieldOffset(17)]
+            public byte Reserved;
+            [FieldOffset(18)]
+            public ushort BitSize;
+            [FieldOffset(20)]
+            public ushort ReportCount;
+            [FieldOffset(22)]
+            public ushort Reserved1;
+            [FieldOffset(24)]
+            public ushort Reserved2;
+            [FieldOffset(26)]
+            public ushort Reserved3;
+            [FieldOffset(28)]
+            public ushort Reserved4;
+            [FieldOffset(30)]
+            public ushort Reserved5;
+            [FieldOffset(32)]
+            public uint UnitsExp;
+            [FieldOffset(36)]
+            public uint Units;
+            [FieldOffset(40)]
+            public int LogicalMin;
+            [FieldOffset(44)]
+            public int LogicalMax;
+            [FieldOffset(48)]
+            public int PhysicalMin;
+            [FieldOffset(52)]
+            public int PhysicalMax;
+            [FieldOffset(56)]
+            public _Range Range;
+            [FieldOffset(56)]
+            public _NotRange NotRange;
+
+            [StructLayout(LayoutKind.Sequential)]
+            public struct _Range
+            {
+                public ushort UsageMin, UsageMax;
+                public ushort StringMin, StringMax;
+                public ushort DesignatorMin, DesignatorMax;
+                public ushort DataIndexMin, DataIndexMax;
+            }
+
+            [StructLayout(LayoutKind.Sequential)]
+            public struct _NotRange
+            {
+                public ushort Usage, Reserved1;
+                public ushort StringIndex, Reserved2;
+                public ushort DesignatorIndex, Reserved3;
+                public ushort DataIndex, Reserved4;
+            }
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct USAGE_AND_PAGE
+        {
+            public RawInputDeviceUsage Usage;
+            public RawInputDeviceUsagePage UsagePage;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -479,6 +747,43 @@ namespace Zergatul.Obs.InputOverlay
             OPEN_EXISTING = 3,
             OPEN_ALWAYS = 4,
             TRUNCATE_EXISTING = 5
+        }
+
+        public enum HidPStatus : uint
+        {
+            HIDP_STATUS_SUCCESS = 0x00110000,
+            HIDP_STATUS_INVALID_PREPARSED_DATA = 0xC0110001,
+            HIDP_STATUS_INVALID_REPORT_TYPE = 0xc0110002,
+            HIDP_STATUS_INVALID_REPORT_LENGTH = 0xc0110003,
+            HIDP_STATUS_USAGE_NOT_FOUND = 0xC0110004,
+            HIDP_STATUS_VALUE_OUT_OF_RANGE = 0xC0110005,
+            HIDP_STATUS_BAD_LOG_PHY_VALUES = 0xC0110006,
+            HIDP_STATUS_BUFFER_TOO_SMALL = 0xC0110007,
+            HIDP_STATUS_INTERNAL_ERROR = 0xC0110008,
+            HIDP_STATUS_I8042_TRANS_UNKNOWN = 0xC0110009,
+            HIDP_STATUS_INCOMPATIBLE_REPORT_ID = 0xC011000A,
+            HIDP_STATUS_NOT_VALUE_ARRAY = 0xC011000B,
+            HIDP_STATUS_IS_VALUE_ARRAY = 0xC011000C,
+            HIDP_STATUS_DATA_INDEX_NOT_FOUND = 0xC011000D,
+            HIDP_STATUS_DATA_INDEX_OUT_OF_RANGE = 0xC011000E,
+            HIDP_STATUS_BUTTON_NOT_PRESSED = 0xC011000F,
+            HIDP_STATUS_REPORT_DOES_NOT_EXIST = 0xC0110010,
+            HIDP_STATUS_NOT_IMPLEMENTED = 0xC0110020,
+            HIDP_STATUS_I8242_TRANS_UNKNOWN = 0xC0110009,
+        }
+
+        public enum HIDP_REPORT_TYPE : int
+        {
+            HidP_Input,
+            HidP_Output,
+            HidP_Feature
+        }
+
+        public enum Win32Error : uint
+        {
+            ERROR_INVALID_HANDLE = 0x0006,
+            ERROR_GEN_FAILURE = 0x001F,
+            ERROR_INVALID_PARAMETER = 0x0057,
         }
 
         #endregion

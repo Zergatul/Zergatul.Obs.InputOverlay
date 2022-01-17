@@ -1,3 +1,4 @@
+using Zergatul.Obs.InputOverlay.Device;
 using Zergatul.Obs.InputOverlay.Keyboard;
 using Zergatul.Obs.InputOverlay.Mouse;
 
@@ -8,6 +9,8 @@ namespace Zergatul.Obs.InputOverlay.Events
         public KeyboardButton KeyboardButton { get; }
         public RawKeyboardEvent RawKeyboard { get; }
         public MouseButton MouseButton { get; }
+        public RawGamepadDevice Gamepad { get; }
+        public int? GamepadButton { get; }
         public bool Pressed { get; }
 
         /// <summary>
@@ -20,6 +23,8 @@ namespace Zergatul.Obs.InputOverlay.Events
             KeyboardButton = button;
             RawKeyboard = rawKeyboard;
             MouseButton = MouseButton.None;
+            Gamepad = null;
+            GamepadButton = null;
             Pressed = pressed;
             Count = null;
         }
@@ -29,6 +34,8 @@ namespace Zergatul.Obs.InputOverlay.Events
             KeyboardButton = KeyboardButton.None;
             RawKeyboard = default;
             MouseButton = button;
+            Gamepad = null;
+            GamepadButton = null;
             Pressed = pressed;
             Count = null;
         }
@@ -38,8 +45,21 @@ namespace Zergatul.Obs.InputOverlay.Events
             KeyboardButton = KeyboardButton.None;
             RawKeyboard = default;
             MouseButton = button;
+            Gamepad = null;
+            GamepadButton = null;
             Pressed = false;
             Count = count;
+        }
+
+        public ButtonEvent(RawGamepadDevice gamepad, int button, bool pressed)
+        {
+            KeyboardButton = KeyboardButton.None;
+            RawKeyboard = default;
+            MouseButton = MouseButton.None;
+            Gamepad = gamepad;
+            GamepadButton = button;
+            Pressed = pressed;
+            Count = null;
         }
     }
 }

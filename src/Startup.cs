@@ -14,7 +14,6 @@ namespace Zergatul.Obs.InputOverlay
             services.AddSingleton<IWebSocketHandler, WebSocketHandler>();
             services.AddSingleton<IRawDeviceInput, RawDeviceInput>();
             services.AddSingleton<IRawDeviceFactory, RawDeviceFactory>();
-            //services.AddSingleton<IMouseBallistics, MouseBallistics>();
 
             services.AddLogging(builder =>
             {

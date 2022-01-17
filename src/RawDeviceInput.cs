@@ -20,8 +20,11 @@ namespace Zergatul.Obs.InputOverlay
         private const string WindowName = "Input Overlay Hidden Window Name";
         private const int BufferSize = 1024;
 
+        public IReadOnlyDictionary<IntPtr, RawDevice> Devices => _devices;
         public event Action<ButtonEvent> ButtonAction;
         public event Action<MoveEvent> MoveAction;
+        public event Action<AxisEvent> AxisAction;
+        public event Action<DeviceEvent> DeviceAction;
 
         private readonly IRawDeviceFactory _factory;
         private readonly ILogger _logger;
@@ -32,6 +35,7 @@ namespace Zergatul.Obs.InputOverlay
         private int _rawInputHeaderSize;
         private int _rawHidDataOffset;
         private Dictionary<IntPtr, RawDevice> _devices;
+        private bool[] _gamepadButtonsBuffer;
 
         public RawDeviceInput(IRawDeviceFactory factory, ILogger<RawDeviceInput> logger)
         {
@@ -43,6 +47,7 @@ namespace Zergatul.Obs.InputOverlay
             _rawInputHeaderSize = Marshal.SizeOf(typeof(RAWINPUTHEADER));
             _rawHidDataOffset = Marshal.OffsetOf<RAWINPUT>(nameof(RAWINPUT.hid)).ToInt32() + Marshal.SizeOf<RAWHID>();
             _devices = new Dictionary<IntPtr, RawDevice>();
+            _gamepadButtonsBuffer = new bool[256];
 
             using (var identity = WindowsIdentity.GetCurrent())
             {
@@ -57,6 +62,8 @@ namespace Zergatul.Obs.InputOverlay
 
         public void Dispose()
         {
+            _factory?.Dispose();
+
             if (_hWnd != IntPtr.Zero)
             {
                 SendMessage(_hWnd, WindowsMessage.WM_DESTROY, IntPtr.Zero, IntPtr.Zero);
@@ -190,22 +197,7 @@ namespace Zergatul.Obs.InputOverlay
 
                 if (data.header.dwType == RawInputType.RIM_TYPEHID)
                 {
-                    byte[] bytes = new byte[data.hid.dwCount * data.hid.dwSizeHid];
-                    Marshal.Copy(buffer + _rawHidDataOffset, bytes, 0, bytes.Length);
-                    var sb = new System.Text.StringBuilder(bytes.Length * 2);
-                    for (int i = 0; i < bytes.Length; i++)
-                    {
-                        if (bytes[i] < 16)
-                        {
-                            sb.Append('0');
-                            sb.Append(bytes[i].ToString("x2"));
-                        }
-                        else
-                        {
-                            sb.Append(bytes[i].ToString("x2"));
-                        }
-                    }
-                    _logger?.LogDebug($"HID=" + sb.ToString());
+                    ProcessHidEvent(data.header.hDevice, data.hid);
                 }
             };
         }
@@ -217,19 +209,39 @@ namespace Zergatul.Obs.InputOverlay
             if (wParam.ToInt64() == GIDC_ARRIVAL)
             {
                 RawDevice device = _factory.FromHDevice(lParam);
-                _logger?.LogInformation($"Device added. {device}.");
-                _devices.Add(lParam, device);
+                if (device is RawGamepadDevice gamepad)
+                {
+                    DeviceAction?.Invoke(new DeviceEvent(device, true));
+                    _logger?.LogInformation($"Gamepad added.\n\t\t" +
+                        $"HDevice={gamepad.HDeviceStr}\n\t\t" +
+                        $"VendorId={FormatInt16(gamepad.VendorId)}\n\t\t" +
+                        $"Vendor={gamepad.VendorName}\n\t\t" +
+                        $"ProductId={FormatInt16(gamepad.ProductId)}\n\t\t" +
+                        $"Product={gamepad.ProductName}");
+                }
+                lock (_devices)
+                {
+                    _devices.Add(lParam, device);
+                }
             }
             if (wParam.ToInt64() == GIDC_REMOVAL)
             {
-                if (_devices.TryGetValue(lParam, out var device))
+                lock (_devices)
                 {
-                    _logger?.LogInformation($"Device removed. {device}.");
-                    _devices.Remove(lParam);
-                }
-                else
-                {
-                    _logger?.LogInformation($"Device removed, but not present in the dictionary.");
+                    if (_devices.TryGetValue(lParam, out var device))
+                    {
+                        if (device is RawGamepadDevice)
+                        {
+                            DeviceAction?.Invoke(new DeviceEvent(device, false));
+                            _logger?.LogInformation($"Gamepad removed.\n\t\t" +
+                                $"HDevice={device.HDeviceStr}");
+                        }
+                        _devices.Remove(lParam);
+                    }
+                    else
+                    {
+                        _logger?.LogWarning($"Device removed, but not present in the dictionary.");
+                    }
                 }
             }
         }
@@ -317,6 +329,122 @@ namespace Zergatul.Obs.InputOverlay
                     if (delta < 0)
                     {
                         ButtonAction?.Invoke(new ButtonEvent(MouseButton.MouseWheelDown, -delta));
+                    }
+                }
+            }
+        }
+
+        private void ProcessHidEvent(IntPtr hDevice, RAWHID hid)
+        {
+            RawDevice device;
+            lock (_devices)
+            {
+                if (!_devices.TryGetValue(hDevice, out device))
+                {
+                    _logger.LogWarning($"Cannot find device by hDevice={FormatIntPtr(hDevice)}.");
+                    return;
+                }
+            }
+
+            if (device is not RawGamepadDevice gamepad)
+            {
+                _logger.LogWarning($"RawHid event invalid device: {device.GetType()}.");
+                return;
+            }
+
+            IntPtr reportPointer = _buffer + _rawHidDataOffset;
+
+            if (gamepad.ButtonsCount > 0)
+            {
+                Array.Clear(_gamepadButtonsBuffer, 0, gamepad.ButtonsCount);
+
+                HidPStatus status;
+
+                uint buttonsLength = default;
+                status = HidP_GetUsagesEx(HIDP_REPORT_TYPE.HidP_Input, 0, null, ref buttonsLength, gamepad.PreparsedData.Pointer, reportPointer, hid.dwSizeHid);
+
+                if (status == HidPStatus.HIDP_STATUS_BUFFER_TOO_SMALL)
+                {
+                    // TODO: stop allocation
+                    USAGE_AND_PAGE[] usages = new USAGE_AND_PAGE[buttonsLength];
+                    status = HidP_GetUsagesEx(HIDP_REPORT_TYPE.HidP_Input, 0, usages, ref buttonsLength, gamepad.PreparsedData.Pointer, reportPointer, hid.dwSizeHid);
+                    if (status != HidPStatus.HIDP_STATUS_SUCCESS)
+                    {
+                        _logger.LogWarning($"HidP_GetUsagesEx 2 failed. {status}.");
+                        return;
+                    }
+
+                    for (int j = 0; j < buttonsLength; j++)
+                    {
+                        int buttonIndex = (int)usages[j].Usage - 1;
+                        if (usages[j].UsagePage == RawInputDeviceUsagePage.HID_USAGE_PAGE_BUTTON && buttonIndex >= 0)
+                        {
+                            _gamepadButtonsBuffer[buttonIndex] = true;
+                            if (!gamepad.Buttons[buttonIndex].Pressed)
+                            {
+                                gamepad.Buttons[buttonIndex].Pressed = true;
+                                ButtonAction?.Invoke(new ButtonEvent(gamepad, buttonIndex, true));
+                            }
+                        }
+                    }
+                }
+                else if (status == HidPStatus.HIDP_STATUS_SUCCESS)
+                {
+                    // zero buttons
+                }
+                else
+                {
+                    _logger.LogWarning($"HidP_GetUsagesEx 1 failed. {status}.");
+                    return;
+                }
+
+                for (int i = 0; i < gamepad.ButtonsCount; i++)
+                {
+                    if (!_gamepadButtonsBuffer[i] && gamepad.Buttons[i].Pressed)
+                    {
+                        gamepad.Buttons[i].Pressed = false;
+                        ButtonAction?.Invoke(new ButtonEvent(gamepad, i, false));
+                    }
+                }
+            }
+
+            if (gamepad.Axes.Count > 0)
+            {
+                foreach (var (_, axis) in gamepad.Axes)
+                {
+                    if (axis.LogicalMin < 0)
+                    {
+                        _logger.LogWarning($"axis.LogicalMin < 0 not implemented.");
+                    }
+                    else
+                    {
+                        HidPStatus status = HidP_GetUsageValue(
+                            HIDP_REPORT_TYPE.HidP_Input,
+                            (RawInputDeviceUsagePage)axis.UsagePage,
+                            0,
+                            axis.UsageMin,
+                            out uint value,
+                            gamepad.PreparsedData.Pointer,
+                            reportPointer,
+                            hid.dwSizeHid);
+                        if (status != HidPStatus.HIDP_STATUS_SUCCESS)
+                        {
+                            _logger.LogWarning($"HidP_GetUsageValue failed. {status}.");
+                            return;
+                        }
+
+                        if (axis.IsAbsolute)
+                        {
+                            if (axis.Value != value)
+                            {
+                                axis.Value = value;
+                                AxisAction?.Invoke(new AxisEvent(gamepad, axis));
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogWarning($"axis.IsAbsolute=false not implemented.");
+                        }
                     }
                 }
             }

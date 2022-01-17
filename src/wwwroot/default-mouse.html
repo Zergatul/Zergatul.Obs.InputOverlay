@@ -23,6 +23,7 @@
             width: 200px;
         }
     </style>
+    <script src="svg-helper.js"></script>
     <script>
         function addSvgReleased(element) {
             let animate = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
@@ -35,14 +36,14 @@
 
             element.appendChild(animate);
             animate.beginElement();
-        };
+        }
 
         function initScroll() {
             let scroll = document.getElementById('MouseScrollUp');
             scroll.setAttribute('opacity', 0);
             scroll = document.getElementById('MouseScrollDown');
             scroll.setAttribute('opacity', 0);
-        };
+        }
 
         function removeSvgAnimations(element) {
             for (let i = 0; i < element.children.length; i++) {
@@ -51,7 +52,7 @@
                     i--;
                 }
             }
-        };
+        }
 
         let scrollUpTimeoutId = 0;
         let scrollDownTimeoutId = 0;
@@ -142,6 +143,10 @@
         }
 
         document.addEventListener('DOMContentLoaded', function () {
+            let svg = document.getElementsByTagName('svg')[0];
+            removeUnwantedSvgAttributes(svg);
+            attachGlowDefinition(svg);
+
             initScroll();
             listenWebSocket();
         });
@@ -194,21 +199,6 @@
                     </cc:Work>
                 </rdf:RDF>
             </metadata>
-            <defs>
-                <filter id="glow" filterUnits="userSpaceOnUse"
-                        x="-50%" y="-50%" width="200%" height="200%">
-                    <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur20" />
-                    <feColorMatrix in="blur20" result="blur-colored" type="matrix"
-                                   values="1 0 0 2 0
-                                            0 1 0 2 0
-                                            0 0 1 2 0
-                                            0 0 0 1 0" />
-                    <feMerge>
-                        <feMergeNode in="blur-colored" />
-                        <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                </filter>
-            </defs>
             <g inkscape:groupmode="layer"
                id="layer2"
                inkscape:label="Layer 2">
