@@ -7,7 +7,7 @@
     <RootNamespace>Zergatul.Obs.InputOverlay</RootNamespace>
     <Authors>Zergatul</Authors>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <Version>2.0.1</Version>
+    <Version>2.1.0</Version>
     <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
     <StartupObject>Zergatul.Obs.InputOverlay.Program</StartupObject>
     <PackageProjectUrl>https://github.com/Zergatul/Zergatul.Obs.InputOverlay</PackageProjectUrl>
@@ -24,10 +24,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Update="wwwroot\default-gamepad.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Update="wwwroot\default-keyboard.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Update="wwwroot\default-mouse.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="wwwroot\gamepad.svg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Update="wwwroot\mouse-flick.html">
@@ -40,6 +46,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Update="wwwroot\mouse.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="wwwroot\common.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

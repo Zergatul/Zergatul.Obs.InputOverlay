@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Zergatul.Obs.InputOverlay.Device;
-using Zergatul.Obs.InputOverlay.Mouse;
 
 namespace Zergatul.Obs.InputOverlay
 {
@@ -17,8 +16,8 @@ namespace Zergatul.Obs.InputOverlay
 
             services.AddLogging(builder =>
             {
-                builder.SetMinimumLevel(LogLevel.Debug);
-                builder.AddFilter("Microsoft", LogLevel.Information);
+                builder.ClearProviders();
+                builder.AddConsole();
             });
         }
 

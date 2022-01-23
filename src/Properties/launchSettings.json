@@ -1,7 +1,8 @@
 {
   "profiles": {
     "ZergatulInputOverlay": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "commandLineArgs": "--Logging:LogLevel:Zergatul=Debug"
     }
   }
 }

@@ -53,7 +53,7 @@ namespace Zergatul.Obs.InputOverlay
             {
                 var principal = new WindowsPrincipal(identity);
                 if (!principal.IsInRole(WindowsBuiltInRole.Administrator))
-                    _logger?.LogWarning("App is running under non-admin. Devices input will not work from applications running as admin.");
+                    _logger.LogWarning("App is running under non-admin. Devices input will not work from applications running as admin.");
             }
 
             _wndThread = new Thread(ThreadFunc);
@@ -76,7 +76,7 @@ namespace Zergatul.Obs.InputOverlay
                 Marshal.FreeHGlobal(_buffer);
             }
 
-            _logger?.LogDebug("Disposed.");
+            _logger.LogDebug("Disposed.");
         }
 
         private void ThreadFunc()
@@ -91,7 +91,7 @@ namespace Zergatul.Obs.InputOverlay
             ushort atom = RegisterClassEx(ref wc);
             if (atom == 0)
             {
-                _logger?.LogError($"Cannot register window class {FormatWin32Error(Marshal.GetLastWin32Error())}.");
+                _logger.LogError($"Cannot register window class {FormatWin32Error(Marshal.GetLastWin32Error())}.");
                 return;
             }
 
@@ -110,7 +110,7 @@ namespace Zergatul.Obs.InputOverlay
                 lpParam: IntPtr.Zero);
             if (_hWnd == IntPtr.Zero)
             {
-                _logger?.LogError($"Cannot create window {FormatWin32Error(Marshal.GetLastWin32Error())}.");
+                _logger.LogError($"Cannot create window {FormatWin32Error(Marshal.GetLastWin32Error())}.");
                 return;
             }
 
@@ -123,7 +123,7 @@ namespace Zergatul.Obs.InputOverlay
             devices[0].hwndTarget = _hWnd;
             if (!RegisterRawInputDevices(devices, 1, Marshal.SizeOf(typeof(RAWINPUTDEVICE))))
             {
-                _logger?.LogError($"Cannot register raw mouse input {FormatWin32Error(Marshal.GetLastWin32Error())}.");
+                _logger.LogError($"Cannot register raw mouse input {FormatWin32Error(Marshal.GetLastWin32Error())}.");
             }
 
             devices = new RAWINPUTDEVICE[1];
@@ -133,7 +133,7 @@ namespace Zergatul.Obs.InputOverlay
             devices[0].hwndTarget = _hWnd;
             if (!RegisterRawInputDevices(devices, 1, Marshal.SizeOf(typeof(RAWINPUTDEVICE))))
             {
-                _logger?.LogError($"Cannot register raw keyboard input {FormatWin32Error(Marshal.GetLastWin32Error())}.");
+                _logger.LogError($"Cannot register raw keyboard input {FormatWin32Error(Marshal.GetLastWin32Error())}.");
             }
 
             devices = new RAWINPUTDEVICE[1];
@@ -143,7 +143,7 @@ namespace Zergatul.Obs.InputOverlay
             devices[0].hwndTarget = _hWnd;
             if (!RegisterRawInputDevices(devices, 1, Marshal.SizeOf(typeof(RAWINPUTDEVICE))))
             {
-                _logger?.LogError($"Cannot register raw gamepad input {FormatWin32Error(Marshal.GetLastWin32Error())}.");
+                _logger.LogError($"Cannot register raw gamepad input {FormatWin32Error(Marshal.GetLastWin32Error())}.");
             }
 
             while (GetMessage(out MSG msg, IntPtr.Zero, 0, 0))
@@ -179,7 +179,7 @@ namespace Zergatul.Obs.InputOverlay
             int size = BufferSize;
             if (GetRawInputData(lParam, GetRawInputDataCommand.RID_INPUT, buffer, ref size, _rawInputHeaderSize) == -1)
             {
-                _logger?.LogError($"GetRawInputData error {FormatWin32Error(Marshal.GetLastWin32Error())}.");
+                _logger.LogError($"GetRawInputData error {FormatWin32Error(Marshal.GetLastWin32Error())}.");
             }
             else
             {
@@ -212,12 +212,25 @@ namespace Zergatul.Obs.InputOverlay
                 if (device is RawGamepadDevice gamepad)
                 {
                     DeviceAction?.Invoke(new DeviceEvent(device, true));
-                    _logger?.LogInformation($"Gamepad added.\n\t\t" +
+                    _logger.LogInformation($"Gamepad added.\n\t\t" +
                         $"HDevice={gamepad.HDeviceStr}\n\t\t" +
                         $"VendorId={FormatInt16(gamepad.VendorId)}\n\t\t" +
                         $"Vendor={gamepad.VendorName}\n\t\t" +
                         $"ProductId={FormatInt16(gamepad.ProductId)}\n\t\t" +
                         $"Product={gamepad.ProductName}");
+
+                    if (_logger.IsEnabled(LogLevel.Debug))
+                    {
+                        var axesInfo = new List<string>(gamepad.Axes.Count);
+                        foreach (var (index, axis) in gamepad.Axes)
+                        {
+                            axesInfo.Add($"axis#{index}: collection={axis.LinkCollection} min={axis.LogicalMin & axis.BitMask} max={axis.LogicalMax & axis.BitMask} hasnull={axis.HasNull}");
+                        }
+                        _logger.LogDebug($"Gamepad information.\n\t\t" +
+                            $"ButtonsCount={gamepad.ButtonsCount}\n\t\t" +
+                            $"AxesCount={gamepad.Axes.Count}\n\t\t\t" +
+                            string.Join("\n\t\t\t", axesInfo));
+                    }
                 }
                 lock (_devices)
                 {
@@ -233,14 +246,14 @@ namespace Zergatul.Obs.InputOverlay
                         if (device is RawGamepadDevice)
                         {
                             DeviceAction?.Invoke(new DeviceEvent(device, false));
-                            _logger?.LogInformation($"Gamepad removed.\n\t\t" +
+                            _logger.LogInformation($"Gamepad removed.\n\t\t" +
                                 $"HDevice={device.HDeviceStr}");
                         }
                         _devices.Remove(lParam);
                     }
                     else
                     {
-                        _logger?.LogWarning($"Device removed, but not present in the dictionary.");
+                        _logger.LogWarning($"Device removed, but not present in the dictionary.");
                     }
                 }
             }

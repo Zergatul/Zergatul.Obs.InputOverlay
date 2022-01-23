@@ -23,7 +23,7 @@
             width: 200px;
         }
     </style>
-    <script src="svg-helper.js"></script>
+    <script src="common.js"></script>
     <script>
         function addSvgReleased(element) {
             let animate = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
@@ -145,7 +145,7 @@
         document.addEventListener('DOMContentLoaded', function () {
             let svg = document.getElementsByTagName('svg')[0];
             removeUnwantedSvgAttributes(svg);
-            attachGlowDefinition(svg);
+            attachSvgGlowDefinition(svg);
 
             initScroll();
             listenWebSocket();
