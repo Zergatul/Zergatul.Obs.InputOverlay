@@ -1,9 +1,6 @@
-function removeUnwantedSvgAttributes(svg) {
-    svg.removeAttribute('width');
-    svg.removeAttribute('height');
-}
+function attachSvgGlowDefinition(svgDoc) {
 
-function attachSvgGlowDefinition(svg) {
+    let svg = svgDoc.rootElement;
 
     let defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
 
