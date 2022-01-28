@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            /*background-color: black;*/ /* uncomment to this to debug in browser */
+            margin: 0;
+            padding: 0;
+            overflow:;
+        }
+        .hidden {
+            display: none !important;
+        }
+        div.container {
+            display: block;
+            white-space: nowrap;
+        }
+        div.keyboard {
+            display: inline-block;
+            margin: 10px;
+        }
+        div.mouse {
+            display: inline-block;
+            margin: 10px;
+        }
+        div.mouse > svg {
+            width: 200px;
+        }
+        div.button,
+        div.small-button,
+        div.tab-button,
+        div.caps-button,
+        div.shift-button,
+        div.ctrl-button,
+        div.alt-button,
+        div.space-button {
+            border: 2px solid white;
+            border-radius: 10px;
+            color: white;
+            display: inline-block;
+            font-family: Calibri;
+            font-size: 20px;
+            line-height: 40px;
+            height: 40px;
+            text-align: center;
+            width: 40px;
+        }
+        div.small-button {
+            line-height: 30px;
+            height: 30px;
+        }
+        div.tab-button {
+            width: 60px;
+        }
+        div.caps-button {
+            width: 70px;
+        }
+        div.shift-button {
+            width: 90px;
+        }
+        div.ctrl-button {
+            width: 60px;
+        }
+        div.alt-button {
+            width: 60px;
+        }
+        div.space-button {
+            width: 280px;
+        }
+        div.pressed {
+            background-color: #2DA026; /* key pressed color */
+            box-shadow: 0 0 8px 3px rgba(35, 173, 278, 1); /* glow effect while holding key */
+        }
+        div.white-space {
+            border: 2px solid transparent;
+            display: inline-block;
+            width: 40px;
+        }
+        div.line {
+            height: 5px;
+        }
+        div.big-line {
+            height: 15px;
+        }
+        div.released {
+            animation: key-released 0.5s ease-out; /* animation settings for key releasing */
+        }
+        @keyframes key-released {
+            from {
+                background-color: #96CF13; /* key released color */
+            }
+            to {
+                background-color: transparent;
+            }
+        }
+    </style>
+    <script>
+        function listenWebSocket() {
+            let state = {};
+            let ws = new WebSocket('ws://' + location.host + '/ws');
+            ws.onopen = function () {
+                ws.send(JSON.stringify({ listen: 'Keyboard' }));
+            };
+            ws.onmessage = function (event) {
+                let data = JSON.parse(event.data);
+
+                if (data.type == 'Ping') {
+                    // reply to ping messages
+                    ws.send(JSON.stringify({ ping: data.ping }));
+                    return;
+                }
+
+                if (data.type == 'Keyboard') {
+                    if (data.pressed) {
+                        state[data.button] = true;
+                        let element = document.getElementById(data.button);
+                        if (element) {
+                            element.classList.remove('released');
+                            element.classList.add('pressed');
+                        }
+                    } else {
+                        if (state[data.button]) {
+                            delete state[data.button];
+                            let element = document.getElementById(data.button);
+                            if (element) {
+                                element.classList.remove('pressed');
+                                element.classList.add('released');
+                            }
+                        }
+                    }
+                }
+            };
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            listenWebSocket();
+        });
+
+    </script>
+</head>
+<body>
+    <div class="keyboard">
+        <div>
+            <div class="button small-button" id="Esc">Esc</div>
+            <div class="white-space" style="width: 20px"></div>
+            <div class="button small-button" id="F1">F1</div>
+            <div class="button small-button" id="F2">F2</div>
+            <div class="button small-button" id="F3">F3</div>
+            <div class="button small-button" id="F4">F4</div>
+			<div class="white-space" style="width: 12px"></div>
+			<div class="button small-button" id="F5">F5</div>
+			<div class="button small-button" id="F6">F6</div>
+			<div class="button small-button" id="F7">F7</div>
+			<div class="button small-button" id="F8">F8</div>
+			<div class="white-space" style="width: 12px"></div>
+			<div class="button small-button" id="F9">F9</div>
+			<div class="button small-button" id="F10">F10</div>
+			<div class="button small-button" id="F11">F11</div>
+			<div class="button small-button" id="F12">F12</div>
+			<div class="white-space"></div>
+			<div class="button small-button" id="PrintScreen">PtSn</div>
+			<div class="button small-button" id="ScrollLock">ScLk</div>
+			<div class="button small-button" id="Pause">⏸</div>
+        </div>
+        <div class="big-line"></div>
+        <div>
+            <div class="button" id="Tilde">~</div>
+            <div class="button" id="Key1">1</div>
+            <div class="button" id="Key2">2</div>
+            <div class="button" id="Key3">3</div>
+            <div class="button" id="Key4">4</div>
+            <div class="button" id="Key5">5</div>
+            <div class="button" id="Key6">6</div>
+            <div class="button" id="Key7">7</div>
+            <div class="button" id="Key8">8</div>
+			<div class="button" id="Key9">9</div>
+			<div class="button" id="Key0">0</div>
+			<div class="button" id="Minus">-</div>
+			<div class="button" id="Plus">=</div>
+			<div class="tab-button" id="Backspace">⌫</div>
+			<div class="white-space"></div>
+			<div class="button" id="Insert">Ins</div>
+			<div class="button" id="Home">Hm</div>
+			<div class="button" id="PageUp">PgUp</div>
+			<div class="white-space"></div>
+			<div class="button" id="NumLock">NLk</div>
+			<div class="button" id="NumSlash">/</div>
+			<div class="button" id="NumAsterisk">*</div>
+			<div class="button" id="NumMinus">-</div>
+        </div>
+        <div class="line"></div>
+        <div>
+            <div class="button tab-button" id="Tab">Tab</div>
+            <div class="button" id="KeyQ">Q</div>
+            <div class="button" id="KeyW">W</div>
+            <div class="button" id="KeyE">E</div>
+            <div class="button" id="KeyR">R</div>
+            <div class="button" id="KeyT">T</div>
+            <div class="button" id="KeyY">Y</div>
+            <div class="button" id="KeyU">U</div>
+            <div class="button" id="KeyI">I</div>
+			<div class="button" id="KeyO">O</div>
+			<div class="button" id="KeyP">P</div>
+			<div class="button" id="LeftBracket">[</div>
+			<div class="button" id="RightBracket">]</div>
+			<div class="button" id="Backslash">\</div>
+			<div class="white-space"></div>
+			<div class="button" id="Delete">Del</div>
+			<div class="button" id="End">End</div>
+			<div class="button" id="PageDown">PgDn</div>
+			<div class="white-space"></div>
+			<div class="button" id="Num7">7</div>
+			<div class="button" id="Num8">8</div>
+			<div class="button" id="Num9">9</div>
+        </div>
+        <div class="line"></div>
+        <div>
+            <div class="button caps-button" id="CapsLock">Caps</div>
+            <div class="button" id="KeyA">A</div>
+            <div class="button" id="KeyS">S</div>
+            <div class="button" id="KeyD">D</div>
+            <div class="button" id="KeyF">F</div>
+            <div class="button" id="KeyG">G</div>
+            <div class="button" id="KeyH">H</div>
+            <div class="button" id="KeyJ">J</div>
+            <div class="button" id="KeyK">K</div>
+			<div class="button" id="KeyL">L</div>
+			<div class="button" id="Semicolon">;</div>
+			<div class="button" id="Quote">'</div>
+			<div class="button" id="Enter" style="width: 78px">Enter</div>
+			<div class="white-space"></div>
+			<div class="white-space"></div>
+			<div class="white-space"></div>
+			<div class="white-space"></div>
+			<div class="white-space"></div>
+			<div class="button" id="Num4">4</div>
+			<div class="button" id="Num5">5</div>
+			<div class="button" id="Num6">6</div>
+			<div class="button" id="NumPlus">+</div>
+        </div>
+        <div class="line"></div>
+        <div>
+            <div class="button shift-button" id="LeftShift">Shift</div>
+            <div class="button" id="KeyZ">Z</div>
+            <div class="button" id="KeyX">X</div>
+            <div class="button" id="KeyC">C</div>
+            <div class="button" id="KeyV">V</div>
+            <div class="button" id="KeyB">B</div>
+            <div class="button" id="KeyN">N</div>
+            <div class="button" id="KeyM">M</div>
+			<div class="button" id="Comma">,</div>
+			<div class="button" id="Period">.</div>
+			<div class="button" id="Slash">/</div>
+			<div class="button" id="RightShift" style="width: 106px">Shift</div>
+			<div class="white-space"></div>
+			<div class="white-space"></div>
+			<div class="button" id="Up">↑</div>
+			<div class="white-space"></div>
+			<div class="white-space"></div>
+			<div class="button" id="Num1">1</div>
+			<div class="button" id="Num2">2</div>
+			<div class="button" id="Num3">3</div>
+        </div>
+        <div class="line"></div>
+        <div>
+            <div class="button ctrl-button" id="LeftCtrl">Ctrl</div>
+            <div class="white-space"></div>
+            <div class="button alt-button" id="LeftAlt">Alt</div>
+            <div class="button space-button" id="Space">Space</div>
+			<div class="button alt-button" id="RightAlt">Alt</div>
+			<div class="white-space" style="width: 76px"></div>
+			<div class="button ctrl-button" id="RightCtrl">Ctrl</div>
+			<div class="white-space"></div>
+			<div class="button" id="Left">←</div>
+			<div class="button" id="Down">↓</div>
+			<div class="button" id="Right">→</div>
+			<div class="white-space"></div>
+			<div class="button" id="Num0" style="width: 88px">0</div>
+			<div class="button" id="NumPeriod">.</div>
+			<div class="button" id="NumEnter">⏎</div>
+        </div>
+    </div>
+</body>
+</html>
