@@ -8,7 +8,8 @@
         const releaseFadeTime = '250ms';
 
         // change this only if you made changes to gamepad SVG
-        const stickShiftFactor = 3.8;
+        const stickShiftFactor = 14;
+        const triggerShiftFactor = 75;
 
         // axis settings, map axis index to displayed gamepad
         const leftStickAxisX = 0;
@@ -45,6 +46,8 @@
         let rightStickCoreInitTransforms = 0;
         let leftTrigger = null;
         let rightTrigger = null;
+        let leftTriggerClipPath = null;
+        let rightTriggerClipPath = null;
         let devices = {};
         let currentGamepad = null;
         let leftStickPos = { dx: 0, dy: 0 };
@@ -146,11 +149,70 @@
             svgMove(element, initTransforms, dx * stickShiftFactor, dy * stickShiftFactor);
         }
 
+        function clearTransforms(element) {
+            while (element.transform.baseVal.length > 0) {
+                element.transform.baseVal.removeItem(0);
+            }
+        }
+
         function applyTriggers() {
             leftTrigger.style.fill = buttonPressedColor;
             leftTrigger.style.fillOpacity = triggersPos > 0 ? triggersPos : 0;
             rightTrigger.style.fill = buttonPressedColor;
             rightTrigger.style.fillOpacity = triggersPos < 0 ? -triggersPos : 0;
+
+            clearTransforms(leftTrigger);
+            clearTransforms(leftTriggerClipPath);
+            if (triggersPos > 0) {
+                let transform1 = svgDoc.rootElement.createSVGTransform();
+                transform1.setTranslate(0, triggersPos * triggerShiftFactor);
+                leftTrigger.transform.baseVal.appendItem(transform1);
+                let transform2 = svgDoc.rootElement.createSVGTransform();
+                transform2.setTranslate(0, -triggersPos * triggerShiftFactor);
+                leftTriggerClipPath.transform.baseVal.appendItem(transform2);
+            }
+
+            clearTransforms(rightTrigger);
+            clearTransforms(rightTriggerClipPath);
+            if (triggersPos < 0) {
+                let transform1 = svgDoc.rootElement.createSVGTransform();
+                transform1.setTranslate(0, -triggersPos * triggerShiftFactor);
+                rightTrigger.transform.baseVal.appendItem(transform1);
+                let transform2 = svgDoc.rootElement.createSVGTransform();
+                transform2.setTranslate(0, triggersPos * triggerShiftFactor);
+                rightTriggerClipPath.transform.baseVal.appendItem(transform2);
+            }
+        }
+
+        function initTriggers() {
+            let defs = svgDoc.getElementsByTagName('defs')[0];
+
+            let init = function (trigger, prefix) {
+                let clipId = prefix + 'TriggerClip';
+                let clipPathId = clipId + 'Path';
+                let clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+                clipPath.setAttribute('id', clipPathId);
+                let use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+                use.setAttribute('href', '#' + clipId);
+                clipPath.appendChild(use);
+                defs.appendChild(clipPath);
+
+                // hide clip element
+                let clip = svgDoc.getElementById(clipId);
+                clip.style.opacity = 0;
+
+                trigger.setAttribute('clip-path', `url(#${clipPathId})`);
+
+                return clipPath;
+
+                setTimeout(function () {
+                    trigger.setAttribute('transform', 'translate(0, 50)');
+                    clipPath.setAttribute('transform', 'translate(0,-50)');
+                }, 1000);
+            };
+
+            leftTriggerClipPath = init(leftTrigger, 'Left');
+            rightTriggerClipPath = init(rightTrigger, 'Right');
         }
 
         function listenWebSocket() {
@@ -259,6 +321,8 @@
 
             attachSvgGlowDefinition(svgDoc);
 
+            initTriggers();
+
             listenWebSocket();
 
             if (showFps) {
@@ -279,7 +343,7 @@
 </head>
 <body>
     <div>
-        <object data="XBoxSeriesXController.svg" type="image/svg+xml"></object>
+        <object data="XBoxSeriesXController-EDIT - Copy.svg" type="image/svg+xml"></object>
     </div>
 </body>
 </html>
