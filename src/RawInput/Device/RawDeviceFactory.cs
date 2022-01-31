@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Zergatul.Obs.InputOverlay.Device
+namespace Zergatul.Obs.InputOverlay.RawInput.Device
 {
     using static WinApi;
     using static WinApi.Kernel32;

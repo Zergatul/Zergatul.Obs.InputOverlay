@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Zergatul.Obs.InputOverlay.Device
+namespace Zergatul.Obs.InputOverlay.RawInput.Device
 {
     public interface IRawDeviceFactory : IDisposable
     {

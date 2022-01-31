@@ -15,7 +15,7 @@ Input overlay plugin for OBS. Supported systems: Windows 10 x64
     - Check `Use custom framerate`, and set FPS to `30`. You can set it to `60`, but please check [Performance issues](docs/PerformanceIssues.md) page first.
     - Check `Shutdown source when not visible`. This will allow you to hide/show source after you restarted the server
     - Do the same for mouse: `URL`: `http://localhost:5001/default-mouse.html`, `Width`: `250`, `Height`: `350`
-    - Or gamepad: `URL`: `http://localhost:5001/default-gamepad.html`, `Width`: `1000`, `Height`: `1000`
+    - Or gamepad: `URL`: `http://localhost:5001/XBoxSeriesX-XInput.html`, `Width`: `1000`, `Height`: `1000`. (XBoxSeriesX doesn't mean your gamepad should be this, it is visual presentation)
     - [Other modules](docs/Modules.md)
 
 ![keyboard source](https://github.com/Zergatul/Zergatul.Obs.InputOverlay/blob/master/docs/keyboard-source.png?raw=true)
@@ -26,7 +26,7 @@ Input overlay plugin for OBS. Supported systems: Windows 10 x64
 3. [Customizing mouse/gamepad](docs/CustomizingMouse.md).
 4. If you need to restart server application, you will need to hide sources in OBS, and show them again.
 5. If you want to play on one PC, and run OBS on another you need to run executable with parameter: `--urls http://<IP address>:<port>/`. IP address should be local network address of PC where you play game and run executable. You can choose port whatever you like, but it is better not use ports lower than 1000. If you have firewall make sure you opened incoming TCP port. Example: `Zergatul.Obs.InputOverlay.exe --urls http://192.168.1.123:12345/`. If everything is fine, you should see in the log: `Now listening on: http://192.168.1.123:12345`.
-6. If you want to show multiple gamepads, check application log for "Gamepad added" events. Below this line you should see `HDevice=0x0000000035F70E29`. Copy hexadecimal string (`0x0000000035F70E29`), and instead of default URL use `http://localhost:5001/default-gamepad.html?0x0000000035F70E29`. Every gamepad has its own `HDevice` number.
+6. [Using multiple gamepads](docs/MultipleGamepads.md).
 
 # Troubleshooting
 If you encounter any problems with running Browser Source in OBS, you can open keyboard/mouse URL's in your browser and check for errors in developer console. In `<style>` element uncomment line: `background-color: black;`. Now open URL in your browser with Developer Tools opened (usually this is `F12` key). Don't forget to comment out this line again if you start using overlay in OBS. Sometimes browser source in OBS caches styles, you can use `Refresh cache of current page` button.

@@ -1,6 +1,6 @@
-using Zergatul.Obs.InputOverlay.Device;
 using Zergatul.Obs.InputOverlay.Keyboard;
 using Zergatul.Obs.InputOverlay.Mouse;
+using Zergatul.Obs.InputOverlay.RawInput.Device;
 
 namespace Zergatul.Obs.InputOverlay.Events
 {

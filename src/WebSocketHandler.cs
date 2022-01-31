@@ -7,10 +7,11 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Zergatul.Obs.InputOverlay.Device;
 using Zergatul.Obs.InputOverlay.Events;
 using Zergatul.Obs.InputOverlay.Keyboard;
 using Zergatul.Obs.InputOverlay.Mouse;
+using Zergatul.Obs.InputOverlay.RawInput;
+using Zergatul.Obs.InputOverlay.RawInput.Device;
 using Zergatul.Obs.InputOverlay.XInput;
 
 namespace Zergatul.Obs.InputOverlay

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Zergatul.Obs.InputOverlay.Device
+namespace Zergatul.Obs.InputOverlay.RawInput.Device
 {
     public static class ProductIdentifier
     {

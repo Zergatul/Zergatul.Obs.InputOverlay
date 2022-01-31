@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using Zergatul.Obs.InputOverlay.Device;
 using Zergatul.Obs.InputOverlay.Events;
+using Zergatul.Obs.InputOverlay.RawInput.Device;
 
-namespace Zergatul.Obs.InputOverlay
+namespace Zergatul.Obs.InputOverlay.RawInput
 {
     public interface IRawDeviceInput : IDisposable
     {
