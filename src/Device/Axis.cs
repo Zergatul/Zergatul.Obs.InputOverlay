@@ -1,7 +1,5 @@
 namespace Zergatul.Obs.InputOverlay.Device
 {
-    using static WinApi;
-
     public class Axis
     {
         public int Index { get; }
@@ -16,7 +14,7 @@ namespace Zergatul.Obs.InputOverlay.Device
         public ushort UsageMin { get; }
         public uint Value { get; set; }
 
-        internal Axis(int index, HIDP_VALUE_CAPS caps)
+        internal Axis(int index, WinApi.Hid.HIDP_VALUE_CAPS caps)
         {
             Index = index;
             UsagePage = (ushort)caps.UsagePage;

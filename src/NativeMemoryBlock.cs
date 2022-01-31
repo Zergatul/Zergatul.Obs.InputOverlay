@@ -3,8 +3,6 @@ using System.Runtime.InteropServices;
 
 namespace Zergatul.Obs.InputOverlay
 {
-    using static WinApi;
-
     public class NativeMemoryBlock : IDisposable
     {
         public IntPtr Pointer { get; private set; }
@@ -20,7 +18,7 @@ namespace Zergatul.Obs.InputOverlay
             Pointer = Marshal.AllocHGlobal(length);
             Length = length;
 
-            CopyMemory(Pointer, source, (uint)length);
+            WinApi.Kernel32.CopyMemory(Pointer, source, (uint)length);
         }
 
         public void Dispose()

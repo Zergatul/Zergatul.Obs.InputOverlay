@@ -11,7 +11,9 @@ using Zergatul.Obs.InputOverlay.Mouse;
 
 namespace Zergatul.Obs.InputOverlay
 {
-    using static WinApi;
+    using static WinApi.Kernel32;
+    using static WinApi.User32;
+    using static WinApi.Hid;
     using static WinApiHelper;
 
     internal class RawDeviceInput : IRawDeviceInput

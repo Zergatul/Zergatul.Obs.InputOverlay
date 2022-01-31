@@ -7,7 +7,7 @@ namespace Zergatul.Obs.InputOverlay.Device
         public int NumberOfButtons { get; }
         public int SampleRate { get; }
 
-        internal RawMouseDevice(IntPtr hDevice, WinApi.RID_DEVICE_INFO_MOUSE mouse)
+        internal RawMouseDevice(IntPtr hDevice, WinApi.User32.RID_DEVICE_INFO_MOUSE mouse)
             : base (hDevice)
         {
             NumberOfButtons = mouse.dwNumberOfButtons;

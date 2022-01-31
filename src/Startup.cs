@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Zergatul.Obs.InputOverlay.Device;
+using Zergatul.Obs.InputOverlay.XInput;
 
 namespace Zergatul.Obs.InputOverlay
 {
@@ -13,6 +14,7 @@ namespace Zergatul.Obs.InputOverlay
             services.AddSingleton<IWebSocketHandler, WebSocketHandler>();
             services.AddSingleton<IRawDeviceInput, RawDeviceInput>();
             services.AddSingleton<IRawDeviceFactory, RawDeviceFactory>();
+            services.AddSingleton<IXInputHandler, XInputHandler>();
 
             services.AddLogging(builder =>
             {

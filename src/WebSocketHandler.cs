@@ -11,27 +11,32 @@ using Zergatul.Obs.InputOverlay.Device;
 using Zergatul.Obs.InputOverlay.Events;
 using Zergatul.Obs.InputOverlay.Keyboard;
 using Zergatul.Obs.InputOverlay.Mouse;
+using Zergatul.Obs.InputOverlay.XInput;
 
 namespace Zergatul.Obs.InputOverlay
 {
     public class WebSocketHandler : IWebSocketHandler
     {
         private readonly IRawDeviceInput _input;
+        private readonly IXInputHandler _xinput;
         private readonly ILogger _logger;
         private readonly Random _rnd = new Random();
         private readonly List<WebSocketWrapper> _webSockets = new List<WebSocketWrapper>();
         private readonly EnumCache<KeyboardButton> _keyboardButtonCache = new EnumCache<KeyboardButton>();
         private readonly EnumCache<MouseButton> _mouseButtonCache = new EnumCache<MouseButton>();
 
-        public WebSocketHandler(IRawDeviceInput input, ILogger<WebSocketHandler> logger)
+        public WebSocketHandler(IRawDeviceInput input, IXInputHandler xinput, ILogger<WebSocketHandler> logger)
         {
             _input = input;
+            _xinput = xinput;
             _logger = logger;
 
             _input.ButtonAction += OnButtonAction;
             _input.MoveAction += OnMoveAction;
             _input.DeviceAction += OnDeviceAction;
             _input.AxisAction += OnAxisAction;
+
+            _xinput.OnStateChanged += XInputStateChanged;
         }
 
         private async void OnButtonAction(ButtonEvent evt)
@@ -130,7 +135,7 @@ namespace Zergatul.Obs.InputOverlay
 
         private async void OnDeviceAction(DeviceEvent evt)
         {
-            using var copy = GetWebsockets(EventCategory.Devices);
+            using var copy = GetWebsockets(EventCategory.RawInputDevices);
             if (copy.Count == 0)
             {
                 return;
@@ -168,7 +173,7 @@ namespace Zergatul.Obs.InputOverlay
 
         private async void OnAxisAction(AxisEvent evt)
         {
-            using var copy = GetWebsockets(EventCategory.GamepadAxes);
+            using var copy = GetWebsockets(EventCategory.RawInputGamepadAxes);
             if (copy.Count == 0)
             {
                 return;
@@ -202,6 +207,49 @@ namespace Zergatul.Obs.InputOverlay
             catch (Exception ex)
             {
                 _logger?.LogError($"OnAxisAction exception: {ex.Message}.");
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+        }
+
+        private async void XInputStateChanged(GamepadState state)
+        {
+            using var copy = GetWebsockets(EventCategory.XInputGamepadState);
+            if (copy.Count == 0)
+            {
+                return;
+            }
+
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(256);
+            try
+            {
+                // TODO: stop allocations
+                var bufferWriter = new StaticSizeArrayBufferWriter(buffer);
+                using (var writer = new Utf8JsonWriter(bufferWriter))
+                {
+                    SerializeXInputGamepadEvent(writer, state);
+                }
+
+                for (int i = 0; i < copy.Count; i++)
+                {
+                    var wrapper = copy.Array[i];
+                    try
+                    {
+                        // TODO: can this be done in parallel?
+                        await wrapper.WebSocket.SendAsync(bufferWriter.GetWritten(), WebSocketMessageType.Text, true, CancellationToken.None);
+                    }
+                    catch (WebSocketException)
+                    {
+                        _logger?.LogInformation("WebSocketException on SendAsync.");
+                        RemoveWebSocket(wrapper);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError($"XInputStateChanged exception: {ex.Message}.");
             }
             finally
             {
@@ -319,7 +367,7 @@ namespace Zergatul.Obs.InputOverlay
                         {
                             wrapper.EventCategoryMask |= category;
 
-                            if (category == EventCategory.Devices)
+                            if (category == EventCategory.RawInputDevices)
                             {
                                 // send already attached devices
                                 var devices = new List<RawDevice>();
@@ -523,8 +571,8 @@ namespace Zergatul.Obs.InputOverlay
                     }
                     break;
 
-                case EventCategory.GamepadButtons:
-                    writer.WriteString("type", nameof(EventCategory.GamepadButtons));
+                case EventCategory.RawInputGamepadButtons:
+                    writer.WriteString("type", nameof(EventCategory.RawInputGamepadButtons));
                     writer.WriteString("hDevice", evt.Gamepad.HDeviceStr);
                     writer.WriteNumber("button", evt.GamepadButton.Value);
                     writer.WriteBoolean("pressed", evt.Pressed);
@@ -566,7 +614,7 @@ namespace Zergatul.Obs.InputOverlay
         private void SerializeDeviceEvent(Utf8JsonWriter writer, DeviceEvent evt)
         {
             writer.WriteStartObject();
-            writer.WriteString("type", nameof(EventCategory.Devices));
+            writer.WriteString("type", nameof(EventCategory.RawInputDevices));
             writer.WriteString("hDevice", evt.Device.HDeviceStr);
             writer.WriteBoolean("attached", evt.Attached);
 
@@ -600,10 +648,25 @@ namespace Zergatul.Obs.InputOverlay
         private void SerializeAxisEvent(Utf8JsonWriter writer, AxisEvent evt)
         {
             writer.WriteStartObject();
-            writer.WriteString("type", nameof(EventCategory.GamepadAxes));
+            writer.WriteString("type", nameof(EventCategory.RawInputGamepadAxes));
             writer.WriteString("hDevice", evt.Gamepad.HDeviceStr);
             writer.WriteNumber("index", evt.Axis.Index);
             writer.WriteNumber("value", evt.Axis.Value);
+            writer.WriteEndObject();
+        }
+
+        private void SerializeXInputGamepadEvent(Utf8JsonWriter writer, GamepadState evt)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("type", nameof(EventCategory.XInputGamepadState));
+            writer.WriteNumber("index", evt.Index);
+            writer.WriteNumber("buttons", evt.Buttons);
+            writer.WriteNumber("lt", evt.LeftTrigger);
+            writer.WriteNumber("rt", evt.RightTrigger);
+            writer.WriteNumber("lx", evt.LeftStickX);
+            writer.WriteNumber("ly", evt.LeftStickY);
+            writer.WriteNumber("rx", evt.RightStickX);
+            writer.WriteNumber("ry", evt.RightStickY);
             writer.WriteEndObject();
         }
 
@@ -615,9 +678,10 @@ namespace Zergatul.Obs.InputOverlay
                 nameof(EventCategory.MouseButtons) => EventCategory.MouseButtons,
                 nameof(EventCategory.RawMouseMovement) => EventCategory.RawMouseMovement,
                 nameof(EventCategory.MouseMovement) => EventCategory.MouseMovement,
-                nameof(EventCategory.Devices) => EventCategory.Devices,
-                nameof(EventCategory.GamepadButtons) => EventCategory.GamepadButtons,
-                nameof(EventCategory.GamepadAxes) => EventCategory.GamepadAxes,
+                nameof(EventCategory.RawInputDevices) => EventCategory.RawInputDevices,
+                nameof(EventCategory.RawInputGamepadButtons) => EventCategory.RawInputGamepadButtons,
+                nameof(EventCategory.RawInputGamepadAxes) => EventCategory.RawInputGamepadAxes,
+                nameof(EventCategory.XInputGamepadState) => EventCategory.XInputGamepadState,
                 _ => throw new NotImplementedException(),
             };
         }
@@ -636,7 +700,7 @@ namespace Zergatul.Obs.InputOverlay
 
             if (evt.GamepadButton != null)
             {
-                return EventCategory.GamepadButtons;
+                return EventCategory.RawInputGamepadButtons;
             }
 
             throw new InvalidOperationException("Unknown category.");

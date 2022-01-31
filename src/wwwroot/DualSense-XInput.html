@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script>
+        const buttonPressedColor = '#2DA026';
+        const buttonReleasedColor = '#96CF13';
+        const releaseFadeTime = '250ms';
+
+        // change this only if you made changes to gamepad SVG
+        const stickShiftFactor = 20;
+        const triggerShiftFactor = 60;
+    </script>
+    <style>
+        body {
+            /*background-color: black;*/ /* uncomment to this to debug in browser */
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        body > div {
+            display: inline-block;
+            margin: 10px;
+        }
+        body > div > object {
+            width: 1000px;
+        }
+    </style>
+    <script src="common.js"></script>
+    <script>
+        let svgDoc = null;
+        let leftStickCore = null;
+        let rightStickCore = null;
+        let leftStickCoreInitTransforms = 0;
+        let rightStickCoreInitTransforms = 0;
+        let leftTrigger = null;
+        let rightTrigger = null;
+        let leftTriggerClipPath = null;
+        let rightTriggerClipPath = null;
+        let selectedGamepadIndex = null;
+        let gamepad = createDefaultGamepadState();
+
+        function addSvgReleased(element, fade) {
+            if (fade) {
+                let animate = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+                animate.setAttribute('id', element.id + '-animate');
+                animate.setAttribute('attributeType', 'XML');
+                animate.setAttribute('attributeName', 'opacity');
+                animate.setAttribute('values', '1.0; 0.0');
+                animate.setAttribute('dur', releaseFadeTime);
+                animate.setAttribute('fill', 'freeze');
+
+                element.appendChild(animate);
+                animate.beginElement();
+            } else {
+                let animate = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+                animate.setAttribute('id', element.id + '-animate');
+                animate.setAttribute('attributeType', 'XML');
+                animate.setAttribute('attributeName', 'fill-opacity');
+                animate.setAttribute('values', '1.0; 0.0');
+                animate.setAttribute('dur', releaseFadeTime);
+                animate.setAttribute('fill', 'freeze');
+
+                element.appendChild(animate);
+                animate.beginElement();
+            }
+        }
+
+        function removeSvgAnimations(element) {
+            for (let i = 0; i < element.children.length; i++) {
+                if (element.children[i].tagName == 'animateTransform' || element.children[i].tagName == 'animate') {
+                    element.removeChild(element.children[i]);
+                    i--;
+                }
+            }
+        }
+
+        function getButtonName(name) {
+            if (!name.startsWith('DPad')) {
+                name = 'Button' + name;
+            }
+            if (name == 'ButtonL3') {
+                name = 'LeftStickCore';
+            }
+            if (name == 'ButtonR3') {
+                name = 'RightStickCore';
+            }
+            return name;
+        }
+
+        function setButtonPressed(name) {
+            let element = svgDoc.getElementById(getButtonName(name));
+            if (element) {
+                element.style.fill = buttonPressedColor;
+                element.style.filter = 'url(#glow)';
+                removeSvgAnimations(element);
+            }
+        }
+
+        function setButtonUnpressed(name) {
+            let element = svgDoc.getElementById(getButtonName(name));
+            if (element) {
+                element.style.fill = buttonReleasedColor;
+                element.style.filter = 'none';
+                addSvgReleased(element, false);
+            }
+        }
+
+        function svgMove(element, initTransforms, dx, dy) {
+            // remove previous transform
+            // stupid chromium engine doesn't allow to do this in a nice way
+            let list = element.transform.baseVal;
+            while (list.length > initTransforms) {
+                list.removeItem(list[initTransforms]);
+            }
+            // add new transform
+            let transform = svgDoc.rootElement.createSVGTransform();
+            transform.setTranslate(dx, dy);
+            list.appendItem(transform);
+        }
+
+        function axisValueToFloat(axis, value) {
+            let mid = 0.5 * (axis.max + axis.min);
+            return 2 * (value - mid) / (axis.max - axis.min);
+        }
+
+        function moveStick(element, initTransforms, dx, dy) {
+            let distance = dx * dx + dy * dy;
+            if (distance > 1) {
+                distance = 1 / Math.sqrt(distance);
+                dx *= distance;
+                dy *= distance;
+            }
+            svgMove(element, initTransforms, dx * stickShiftFactor, -dy * stickShiftFactor);
+        }
+
+        function setLeftStickPos(x, y) {
+            moveStick(leftStickCore, leftStickCoreInitTransforms, x / 32768, y / 32768);
+        }
+
+        function setRightStickPos(x, y) {
+            moveStick(rightStickCore, rightStickCoreInitTransforms, x / 32768, y / 32768);
+        }
+
+        function setLeftTrigger(value) {
+            value = value / 255;
+            leftTrigger.style.fill = buttonPressedColor;
+            leftTrigger.style.fillOpacity = value;
+            clearTransforms(leftTrigger);
+            clearTransforms(leftTriggerClipPath);
+            if (value > 0) {
+                let transform1 = svgDoc.rootElement.createSVGTransform();
+                transform1.setTranslate(0, value * triggerShiftFactor);
+                leftTrigger.transform.baseVal.appendItem(transform1);
+                let transform2 = svgDoc.rootElement.createSVGTransform();
+                transform2.setTranslate(0, -value * triggerShiftFactor);
+                leftTriggerClipPath.transform.baseVal.appendItem(transform2);
+            }
+        }
+
+        function setRightTrigger(value) {
+            value = value / 255;
+            rightTrigger.style.fill = buttonPressedColor;
+            rightTrigger.style.fillOpacity = value;
+            clearTransforms(rightTrigger);
+            clearTransforms(rightTriggerClipPath);
+            if (value > 0) {
+                let transform1 = svgDoc.rootElement.createSVGTransform();
+                transform1.setTranslate(0, value * triggerShiftFactor);
+                rightTrigger.transform.baseVal.appendItem(transform1);
+                let transform2 = svgDoc.rootElement.createSVGTransform();
+                transform2.setTranslate(0, -value * triggerShiftFactor);
+                rightTriggerClipPath.transform.baseVal.appendItem(transform2);
+            }
+        }
+
+        function clearTransforms(element) {
+            while (element.transform.baseVal.length > 0) {
+                element.transform.baseVal.removeItem(0);
+            }
+        }
+
+        function applyTriggers() {
+            leftTrigger.style.fill = buttonPressedColor;
+            leftTrigger.style.fillOpacity = triggersPos > 0 ? triggersPos : 0;
+            rightTrigger.style.fill = buttonPressedColor;
+            rightTrigger.style.fillOpacity = triggersPos < 0 ? -triggersPos : 0;
+
+            clearTransforms(leftTrigger);
+            clearTransforms(leftTriggerClipPath);
+            if (triggersPos > 0) {
+                let transform1 = svgDoc.rootElement.createSVGTransform();
+                transform1.setTranslate(0, triggersPos * triggerShiftFactor);
+                leftTrigger.transform.baseVal.appendItem(transform1);
+                let transform2 = svgDoc.rootElement.createSVGTransform();
+                transform2.setTranslate(0, -triggersPos * triggerShiftFactor);
+                leftTriggerClipPath.transform.baseVal.appendItem(transform2);
+            }
+
+            clearTransforms(rightTrigger);
+            clearTransforms(rightTriggerClipPath);
+            if (triggersPos < 0) {
+                let transform1 = svgDoc.rootElement.createSVGTransform();
+                transform1.setTranslate(0, -triggersPos * triggerShiftFactor);
+                rightTrigger.transform.baseVal.appendItem(transform1);
+                let transform2 = svgDoc.rootElement.createSVGTransform();
+                transform2.setTranslate(0, triggersPos * triggerShiftFactor);
+                rightTriggerClipPath.transform.baseVal.appendItem(transform2);
+            }
+        }
+
+        function initTriggers() {
+            let defs = svgDoc.getElementsByTagName('defs')[0];
+
+            let init = function (trigger, prefix) {
+                let clipId = prefix + 'TriggerClip';
+                let clipPathId = clipId + 'Path';
+                let clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+                clipPath.setAttribute('id', clipPathId);
+                let use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+                use.setAttribute('href', '#' + clipId);
+                clipPath.appendChild(use);
+                defs.appendChild(clipPath);
+
+                // hide clip element
+                let clip = svgDoc.getElementById(clipId);
+                clip.style.opacity = 0;
+
+                trigger.setAttribute('clip-path', `url(#${clipPathId})`);
+
+                return clipPath;
+            };
+
+            leftTriggerClipPath = init(leftTrigger, 'Left');
+            rightTriggerClipPath = init(rightTrigger, 'Right');
+        }
+
+        function listenWebSocket() {
+            let ws = new WebSocket('ws://' + location.host + '/ws');
+            ws.onopen = function () {
+                ws.send(JSON.stringify({ listen: 'XInputGamepadState' }));
+            };
+            ws.onmessage = function (event) {
+                let data = JSON.parse(event.data);
+
+                if (data.type == 'Ping') {
+                    // reply to ping messages
+                    ws.send(JSON.stringify({ ping: data.ping }));
+                    return;
+                }
+
+                if (data.type == 'XInputGamepadState') {
+                    if (selectedGamepadIndex != null && selectedGamepadIndex != data.index) {
+                        return;
+                    }
+
+                    applyStateChange2(
+                        gamepad,
+                        data,
+                        setButtonPressed, setButtonUnpressed,
+                        setLeftStickPos, setRightStickPos,
+                        setLeftTrigger, setRightTrigger);
+                }
+            };
+        }
+
+        function onSvgLoaded() {
+            let object = document.getElementsByTagName('object')[0];
+            svgDoc = object.contentDocument;
+
+            leftStickCore = svgDoc.getElementById('LeftStickCore');
+            rightStickCore = svgDoc.getElementById('RightStickCore');
+            leftTrigger = svgDoc.getElementById('LeftTrigger');
+            rightTrigger = svgDoc.getElementById('RightTrigger');
+            leftStickCoreInitTransforms = leftStickCore.transform.baseVal.length;
+            rightStickCoreInitTransforms = rightStickCore.transform.baseVal.length;
+
+            if (location.search.length > 1) {
+                // allow to listen specific gamepad
+                selectedGamepadIndex = parseInt(location.search.substr(1));
+            }
+
+            attachSvgGlowDefinition(svgDoc);
+
+            initTriggers();
+
+            listenWebSocket();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            let object = document.getElementsByTagName('object')[0];
+            if (object.contentDocument && object.contentDocument.rootElement) {
+                onSvgLoaded();
+            } else {
+                object.addEventListener('load', onSvgLoaded);
+            }
+        });
+
+    </script>
+</head>
+<body>
+    <div>
+        <object data="DualSense-XInput.svg" type="image/svg+xml"></object>
+    </div>
+</body>
+</html>

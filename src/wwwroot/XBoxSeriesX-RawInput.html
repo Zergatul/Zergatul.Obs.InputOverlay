@@ -8,7 +8,8 @@
         const releaseFadeTime = '250ms';
 
         // change this only if you made changes to gamepad SVG
-        const stickShiftFactor = 3.8;
+        const stickShiftFactor = 14;
+        const triggerShiftFactor = 60;
 
         // axis settings, map axis index to displayed gamepad
         const leftStickAxisX = 0;
@@ -17,9 +18,6 @@
         const rightStickAxisX = 3;
         const rightStickAxisY = 4;
         const dPadAxis = 9;
-
-        // use this to debug performance issues
-        const showFps = false;
     </script>
     <style>
         body {
@@ -50,7 +48,7 @@
         let leftStickPos = { dx: 0, dy: 0 };
         let rightStickPos = { dx: 0, dy: 0 };
         let triggersPos = 0;
-        let dPadValue = 0;
+        let dPadValue = null;
 
         function addSvgReleased(element, fade) {
             if (fade) {
@@ -153,15 +151,46 @@
             rightTrigger.style.fillOpacity = triggersPos < 0 ? -triggersPos : 0;
         }
 
+        function initTriggers() {
+            let defs = svgDoc.getElementsByTagName('defs')[0];
+
+            let init = function (trigger, prefix) {
+                let clipId = prefix + 'TriggerClip';
+                let clipPathId = clipId + 'Path';
+                let clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+                clipPath.setAttribute('id', clipPathId);
+                let use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+                use.setAttribute('href', '#' + clipId);
+                clipPath.appendChild(use);
+                defs.appendChild(clipPath);
+
+                // hide clip element
+                let clip = svgDoc.getElementById(clipId);
+                clip.style.opacity = 0;
+
+                trigger.setAttribute('clip-path', `url(#${clipPathId})`);
+
+                return clipPath;
+
+                setTimeout(function () {
+                    trigger.setAttribute('transform', 'translate(0, 50)');
+                    clipPath.setAttribute('transform', 'translate(0,-50)');
+                }, 1000);
+            };
+
+            leftTriggerClipPath = init(leftTrigger, 'Left');
+            rightTriggerClipPath = init(rightTrigger, 'Right');
+        }
+
         function listenWebSocket() {
             let ws = new WebSocket('ws://' + location.host + '/ws');
             ws.onopen = function () {
                 // listen for attached devices
-                ws.send(JSON.stringify({ listen: 'Devices' }));
+                ws.send(JSON.stringify({ listen: 'RawInputDevices' }));
                 // listen for gamepad button events
-                ws.send(JSON.stringify({ listen: 'GamepadButtons' }));
+                ws.send(JSON.stringify({ listen: 'RawInputGamepadButtons' }));
                 // listen for gamepad axis events
-                ws.send(JSON.stringify({ listen: 'GamepadAxes' }));
+                ws.send(JSON.stringify({ listen: 'RawInputGamepadAxes' }));
             };
             ws.onmessage = function (event) {
                 let data = JSON.parse(event.data);
@@ -172,7 +201,7 @@
                     return;
                 }
 
-                if (data.type == 'Devices') {
+                if (data.type == 'RawInputDevices') {
                     if (data.attached) {
                         devices[data.hDevice] = data;
                     } else {
@@ -186,14 +215,19 @@
                     return;
                 }
 
-                if (data.type == 'GamepadAxes') {
+                if (data.type == 'RawInputGamepadAxes') {
                     if (data.index == dPadAxis) {
-                        if (dPadValue > 0) {
-                            setDPadUnpressed(svgDoc.getElementById('d' + dPadValue));
+                        let min = devices[data.hDevice].axes[dPadAxis].min;
+                        let max = devices[data.hDevice].axes[dPadAxis].max;
+                        if (dPadValue != null) {
+                            setDPadUnpressed(svgDoc.getElementById('D' + dPadValue));
                         }
                         dPadValue = data.value;
-                        if (dPadValue > 0) {
-                            setDPadPressed(svgDoc.getElementById('d' + dPadValue));
+                        if (min <= dPadValue && dPadValue <= max) {
+                            dPadValue -= min;
+                            setDPadPressed(svgDoc.getElementById('D' + dPadValue));
+                        } else {
+                            dPadValue = null;
                         }
                         return;
                     }
@@ -222,8 +256,8 @@
                     return;
                 }
 
-                if (data.type == 'GamepadButtons') {
-                    let element = svgDoc.getElementById('button' + data.button);
+                if (data.type == 'RawInputGamepadButtons') {
+                    let element = svgDoc.getElementById('Button' + data.button);
                     if (element) {
                         if (data.pressed) {
                             setButtonPressed(element);
@@ -241,10 +275,10 @@
             let object = document.getElementsByTagName('object')[0];
             svgDoc = object.contentDocument;
 
-            leftStickCore = svgDoc.getElementById('left-stick-core');
-            rightStickCore = svgDoc.getElementById('right-stick-core');
-            leftTrigger = svgDoc.getElementById('left-trigger');
-            rightTrigger = svgDoc.getElementById('right-trigger');
+            leftStickCore = svgDoc.getElementById('LeftStickCore');
+            rightStickCore = svgDoc.getElementById('RightStickCore');
+            leftTrigger = svgDoc.getElementById('LeftTrigger');
+            rightTrigger = svgDoc.getElementById('RightTrigger');
             leftStickCoreInitTransforms = leftStickCore.transform.baseVal.length;
             rightStickCoreInitTransforms = rightStickCore.transform.baseVal.length;
 
@@ -253,17 +287,13 @@
                 currentGamepad = location.search.substr(1);
             }
 
-            for (let i = 1; i <= 8; i++) {
-                svgDoc.getElementById('d' + i).style.opacity = 0;
+            for (let i = 0; i < 8; i++) {
+                svgDoc.getElementById('D' + i).style.opacity = 0;
             }
 
             attachSvgGlowDefinition(svgDoc);
 
             listenWebSocket();
-
-            if (showFps) {
-                displayFps();
-            }
         }
 
         document.addEventListener('DOMContentLoaded', function () {
@@ -279,7 +309,7 @@
 </head>
 <body>
     <div>
-        <object data="XBoxSeriesXController.svg" type="image/svg+xml"></object>
+        <object data="XBoxSeriesX-RawInput.svg" type="image/svg+xml"></object>
     </div>
 </body>
 </html>
