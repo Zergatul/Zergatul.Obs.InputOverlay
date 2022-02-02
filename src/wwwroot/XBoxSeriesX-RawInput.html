@@ -149,6 +149,34 @@
             leftTrigger.style.fillOpacity = triggersPos > 0 ? triggersPos : 0;
             rightTrigger.style.fill = buttonPressedColor;
             rightTrigger.style.fillOpacity = triggersPos < 0 ? -triggersPos : 0;
+
+            clearTransforms(leftTrigger);
+            clearTransforms(leftTriggerClipPath);
+            if (triggersPos > 0) {
+                let transform1 = svgDoc.rootElement.createSVGTransform();
+                transform1.setTranslate(0, triggersPos * triggerShiftFactor);
+                leftTrigger.transform.baseVal.appendItem(transform1);
+                let transform2 = svgDoc.rootElement.createSVGTransform();
+                transform2.setTranslate(0, -triggersPos * triggerShiftFactor);
+                leftTriggerClipPath.transform.baseVal.appendItem(transform2);
+            }
+
+            clearTransforms(rightTrigger);
+            clearTransforms(rightTriggerClipPath);
+            if (triggersPos < 0) {
+                let transform1 = svgDoc.rootElement.createSVGTransform();
+                transform1.setTranslate(0, -triggersPos * triggerShiftFactor);
+                rightTrigger.transform.baseVal.appendItem(transform1);
+                let transform2 = svgDoc.rootElement.createSVGTransform();
+                transform2.setTranslate(0, triggersPos * triggerShiftFactor);
+                rightTriggerClipPath.transform.baseVal.appendItem(transform2);
+            }
+        }
+
+        function clearTransforms(element) {
+            while (element.transform.baseVal.length > 0) {
+                element.transform.baseVal.removeItem(0);
+            }
         }
 
         function initTriggers() {
@@ -171,11 +199,6 @@
                 trigger.setAttribute('clip-path', `url(#${clipPathId})`);
 
                 return clipPath;
-
-                setTimeout(function () {
-                    trigger.setAttribute('transform', 'translate(0, 50)');
-                    clipPath.setAttribute('transform', 'translate(0,-50)');
-                }, 1000);
             };
 
             leftTriggerClipPath = init(leftTrigger, 'Left');
@@ -292,6 +315,8 @@
             }
 
             attachSvgGlowDefinition(svgDoc);
+
+            initTriggers();
 
             listenWebSocket();
         }
