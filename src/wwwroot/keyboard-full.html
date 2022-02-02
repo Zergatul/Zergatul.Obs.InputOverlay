@@ -7,7 +7,6 @@
             /*background-color: black;*/ /* uncomment to this to debug in browser */
             margin: 0;
             padding: 0;
-            overflow:;
         }
         .hidden {
             display: none !important;
@@ -82,6 +81,17 @@
         }
         div.big-line {
             height: 15px;
+        }
+        div.buttons {
+            white-space: nowrap;
+            height: 44px;
+            overflow-y: visible;
+        }
+        div.multirow-button {
+            height: 89px;
+        }
+        div.smaller-font {
+            font-size: 18px;
         }
         div.released {
             animation: key-released 0.5s ease-out; /* animation settings for key releasing */
@@ -164,7 +174,7 @@
 			<div class="button small-button" id="Pause">⏸</div>
         </div>
         <div class="big-line"></div>
-        <div>
+        <div class="buttons">
             <div class="button" id="Tilde">~</div>
             <div class="button" id="Key1">1</div>
             <div class="button" id="Key2">2</div>
@@ -182,7 +192,7 @@
 			<div class="white-space"></div>
 			<div class="button" id="Insert">Ins</div>
 			<div class="button" id="Home">Hm</div>
-			<div class="button" id="PageUp">PgUp</div>
+			<div class="button smaller-font" id="PageUp">PgUp</div>
 			<div class="white-space"></div>
 			<div class="button" id="NumLock">NLk</div>
 			<div class="button" id="NumSlash">/</div>
@@ -190,7 +200,7 @@
 			<div class="button" id="NumMinus">-</div>
         </div>
         <div class="line"></div>
-        <div>
+        <div class="buttons">
             <div class="button tab-button" id="Tab">Tab</div>
             <div class="button" id="KeyQ">Q</div>
             <div class="button" id="KeyW">W</div>
@@ -208,14 +218,15 @@
 			<div class="white-space"></div>
 			<div class="button" id="Delete">Del</div>
 			<div class="button" id="End">End</div>
-			<div class="button" id="PageDown">PgDn</div>
+			<div class="button smaller-font" id="PageDown">PgDn</div>
 			<div class="white-space"></div>
 			<div class="button" id="Num7">7</div>
 			<div class="button" id="Num8">8</div>
 			<div class="button" id="Num9">9</div>
+            <div class="button multirow-button" id="NumPlus">+</div>
         </div>
         <div class="line"></div>
-        <div>
+        <div class="buttons">
             <div class="button caps-button" id="CapsLock">Caps</div>
             <div class="button" id="KeyA">A</div>
             <div class="button" id="KeyS">S</div>
@@ -237,10 +248,9 @@
 			<div class="button" id="Num4">4</div>
 			<div class="button" id="Num5">5</div>
 			<div class="button" id="Num6">6</div>
-			<div class="button" id="NumPlus">+</div>
         </div>
         <div class="line"></div>
-        <div>
+        <div class="buttons">
             <div class="button shift-button" id="LeftShift">Shift</div>
             <div class="button" id="KeyZ">Z</div>
             <div class="button" id="KeyX">X</div>
@@ -261,9 +271,10 @@
 			<div class="button" id="Num1">1</div>
 			<div class="button" id="Num2">2</div>
 			<div class="button" id="Num3">3</div>
+            <div class="button multirow-button" id="NumEnter">⏎</div>
         </div>
         <div class="line"></div>
-        <div>
+        <div class="buttons">
             <div class="button ctrl-button" id="LeftCtrl">Ctrl</div>
             <div class="white-space"></div>
             <div class="button alt-button" id="LeftAlt">Alt</div>
@@ -278,7 +289,6 @@
 			<div class="white-space"></div>
 			<div class="button" id="Num0" style="width: 88px">0</div>
 			<div class="button" id="NumPeriod">.</div>
-			<div class="button" id="NumEnter">⏎</div>
         </div>
     </div>
 </body>
