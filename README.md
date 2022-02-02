@@ -15,7 +15,7 @@ Input overlay plugin for OBS. Supported systems: Windows 10 x64
     - Check `Use custom framerate`, and set FPS to `30`. You can set it to `60`, but please check [Performance issues](docs/PerformanceIssues.md) page first.
     - Check `Shutdown source when not visible`. This will allow you to hide/show source after you restarted the server
     - Do the same for mouse: `URL`: `http://localhost:5001/default-mouse.html`, `Width`: `250`, `Height`: `350`
-    - Or gamepad: `URL`: `http://localhost:5001/XBoxSeriesX-XInput.html`, `Width`: `1000`, `Height`: `1000`. (XBoxSeriesX doesn't mean your gamepad should be this, it is should work with any XInput compatible gamepads, details in [Gamepads](docs/Modules.md#Gamepads))
+    - Or gamepad: `URL`: `http://localhost:5001/XBoxSeriesX-XInput.html`, `Width`: `1000`, `Height`: `1000`. (XBoxSeriesX doesn't mean your gamepad should be this, it is should work with any XInput compatible gamepads, details in [Gamepads](docs/Modules.md#gamepads))
     - [Other modules](docs/Modules.md)
 
 ![keyboard source](https://github.com/Zergatul/Zergatul.Obs.InputOverlay/blob/master/docs/keyboard-source.png?raw=true)
