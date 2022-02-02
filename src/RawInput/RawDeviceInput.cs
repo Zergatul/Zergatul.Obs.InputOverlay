@@ -427,6 +427,11 @@ namespace Zergatul.Obs.InputOverlay.RawInput
             {
                 foreach (var (_, axis) in gamepad.Axes)
                 {
+                    if (axis.Ignore)
+                    {
+                        continue;
+                    }
+
                     if (axis.LogicalMin < 0)
                     {
                         _logger.LogWarning($"axis.LogicalMin < 0 not implemented.");
@@ -444,8 +449,9 @@ namespace Zergatul.Obs.InputOverlay.RawInput
                             hid.dwSizeHid);
                         if (status != HidPStatus.HIDP_STATUS_SUCCESS)
                         {
-                            _logger.LogWarning($"HidP_GetUsageValue failed. {status}.");
-                            return;
+                            _logger.LogWarning($"HidP_GetUsageValue failed for axis #{axis.Index}. This axis will be ignored. {status}.");
+                            axis.Ignore = true;
+                            continue;
                         }
 
                         if (axis.IsAbsolute)

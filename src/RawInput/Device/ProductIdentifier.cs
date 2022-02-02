@@ -21,7 +21,17 @@ namespace Zergatul.Obs.InputOverlay.RawInput.Device
                 [0x02FD] = "Xbox One S Controller [Bluetooth]",
                 [0x0B12] = "Xbox Wireless Controller (Model 1914)",
                 [0x0B13] = "Xbox Wireless Controller (Model 1914)",
-            }
+            },
+
+            // Sony Group Corporation
+            [0x054C] = new Dictionary<int, string>
+            {
+                [0x0268] = "PlayStation 3 Controller",
+                [0x05C4] = "DualShock 4",
+                [0x0BA0] = "DualShock 4 Wireless Adapter",
+                [0x0CDA] = "PlayStation Classic Controller",
+                [0x0CE6] = "DualSense Wireless Controller"
+            },
         };
 
         public static string Get(int vendorId, int productId)

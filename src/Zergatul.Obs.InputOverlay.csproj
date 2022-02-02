@@ -13,15 +13,16 @@
     <PackageProjectUrl>https://github.com/Zergatul/Zergatul.Obs.InputOverlay</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Zergatul/Zergatul.Obs.InputOverlay</RepositoryUrl>
 
-    <!-- Publish settings -->
-    <!-- uncomment below line before publish -->
-    <!-- for some reason VS2022 don't allow to debug while this enabled -->
-    <!--<PublishSingleFile>true</PublishSingleFile> -->
     <PublishTrimmed>true</PublishTrimmed>
     <PublishReadyToRun>true</PublishReadyToRun>
     <TrimMode>copyused</TrimMode>
     <SelfContained>true</SelfContained>
+    <ApplicationIcon>Properties\AppIcon.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Properties\AppIcon.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <Content Update="wwwroot\default-gamepad.html">

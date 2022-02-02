@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script>
+        const buttonPressedColor = '#2DA026';
+        const buttonReleasedColor = '#96CF13';
+        const releaseFadeTime = '250ms';
+
+        // change this only if you made changes to gamepad SVG
+        const stickShiftFactor = 22;
+        const triggerShiftFactor = 60;
+
+        // axis settings, map axis index to displayed gamepad
+        // configured for DualSense
+        const leftStickAxisX = 0;
+        const leftStickAxisY = 1;
+        const leftTriggerAxis = 3;
+        const rightTriggerAxis = 4;
+        const rightStickAxisX = 2;
+        const rightStickAxisY = 5;
+        const dPadAxis = 9;
+    </script>
+    <style>
+        body {
+            /*background-color: black;*/ /* uncomment to this to debug in browser */
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        body > div {
+            display: inline-block;
+            margin: 10px;
+        }
+        body > div > object {
+            width: 1000px;
+        }
+    </style>
+    <script src="common.js"></script>
+    <script>
+        let svgDoc = null;
+        let leftStickCore = null;
+        let rightStickCore = null;
+        let leftTrigger = null;
+        let rightTrigger = null;
+        let leftTriggerClipPath = null;
+        let rightTriggerClipPath = null;
+        let devices = {};
+        let currentGamepad = null;
+        let leftStickPos = { dx: 0, dy: 0 };
+        let rightStickPos = { dx: 0, dy: 0 };
+        let leftTriggerPos = 0;
+        let rightTriggerPos = 0;
+        let dPadButtons = [];
+
+        function addSvgReleased(element, fade) {
+            if (fade) {
+                let animate = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+                animate.setAttribute('id', element.id + '-animate');
+                animate.setAttribute('attributeType', 'XML');
+                animate.setAttribute('attributeName', 'opacity');
+                animate.setAttribute('values', '1.0; 0.0');
+                animate.setAttribute('dur', releaseFadeTime);
+                animate.setAttribute('fill', 'freeze');
+
+                element.appendChild(animate);
+                animate.beginElement();
+            } else {
+                let animate = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+                animate.setAttribute('id', element.id + '-animate');
+                animate.setAttribute('attributeType', 'XML');
+                animate.setAttribute('attributeName', 'fill-opacity');
+                animate.setAttribute('values', '1.0; 0.0');
+                animate.setAttribute('dur', releaseFadeTime);
+                animate.setAttribute('fill', 'freeze');
+
+                element.appendChild(animate);
+                animate.beginElement();
+            }
+        }
+
+        function removeSvgAnimations(element) {
+            for (let i = 0; i < element.children.length; i++) {
+                if (element.children[i].tagName == 'animateTransform' || element.children[i].tagName == 'animate') {
+                    element.removeChild(element.children[i]);
+                    i--;
+                }
+            }
+        }
+
+        function setButtonPressed(element) {
+            element.style.fill = buttonPressedColor;
+            element.style.filter = 'url(#glow)';
+            removeSvgAnimations(element);
+        }
+
+        function setButtonUnpressed(element) {
+            element.style.fill = buttonReleasedColor;
+            element.style.filter = 'none';
+            addSvgReleased(element, false);
+        }
+
+        function processDPad(value) {
+            let buttons = getDPadButtons(value);
+            buttons.forEach(function (btn) {
+                if (dPadButtons.indexOf(btn) < 0) {
+                    setButtonPressed(svgDoc.getElementById('DPad' + btn));
+                }
+            });
+            dPadButtons.forEach(function (btn) {
+                if (buttons.indexOf(btn) < 0) {
+                    setButtonUnpressed(svgDoc.getElementById('DPad' + btn));
+                }
+            });
+            dPadButtons = buttons;
+        }
+
+        function getDPadButtons(value) {
+            switch (value) {
+                case 0: return ['Up'];
+                case 1: return ['Up', 'Right'];
+                case 2: return ['Right'];
+                case 3: return ['Right', 'Down'];
+                case 4: return ['Down'];
+                case 5: return ['Down', 'Left'];
+                case 6: return ['Left'];
+                case 7: return ['Left', 'Up'];
+                default: return [];
+            }
+        }
+
+        function svgMove(element, initTransforms, dx, dy) {
+            // remove transforms
+            let list = element.transform.baseVal;
+            while (list.length > 0) {
+                list.removeItem(list[0]);
+            }
+            // add new transform
+            let transform = svgDoc.rootElement.createSVGTransform();
+            transform.setTranslate(dx, dy);
+            list.appendItem(transform);
+        }
+
+        function axisValueToFloat(axis, value) {
+            let mid = 0.5 * (axis.max + axis.min);
+            return 2 * (value - mid) / (axis.max - axis.min);
+        }
+
+        function moveStick(element, initTransforms, pos) {
+            let dx = pos.dx;
+            let dy = pos.dy;
+            let distance = dx * dx + dy * dy;
+            if (distance > 1) {
+                distance = 1 / Math.sqrt(distance);
+                dx *= distance;
+                dy *= distance;
+            }
+            svgMove(element, initTransforms, dx * stickShiftFactor, dy * stickShiftFactor);
+        }
+
+        function clearTransforms(element) {
+            while (element.transform.baseVal.length > 0) {
+                element.transform.baseVal.removeItem(0);
+            }
+        }
+
+        function moveTrigger(trigger, clip, pos) {
+            trigger.style.fill = buttonPressedColor;
+            trigger.style.fillOpacity = pos;
+            clearTransforms(trigger);
+            clearTransforms(clip);
+            if (pos > 0) {
+                let transform1 = svgDoc.rootElement.createSVGTransform();
+                transform1.setTranslate(0, pos * triggerShiftFactor);
+                trigger.transform.baseVal.appendItem(transform1);
+                let transform2 = svgDoc.rootElement.createSVGTransform();
+                transform2.setTranslate(0, -pos * triggerShiftFactor);
+                clip.transform.baseVal.appendItem(transform2);
+            }
+        }
+
+        function initTriggers() {
+            let defs = svgDoc.getElementsByTagName('defs')[0];
+
+            let init = function (trigger, prefix) {
+                let clipId = prefix + 'TriggerClip';
+                let clipPathId = clipId + 'Path';
+                let clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+                clipPath.setAttribute('id', clipPathId);
+                let use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+                use.setAttribute('href', '#' + clipId);
+                clipPath.appendChild(use);
+                defs.appendChild(clipPath);
+
+                // hide clip element
+                let clip = svgDoc.getElementById(clipId);
+                clip.style.opacity = 0;
+
+                trigger.setAttribute('clip-path', `url(#${clipPathId})`);
+
+                return clipPath;
+            };
+
+            leftTriggerClipPath = init(leftTrigger, 'Left');
+            rightTriggerClipPath = init(rightTrigger, 'Right');
+        }
+
+        function listenWebSocket() {
+            let ws = new WebSocket('ws://' + location.host + '/ws');
+            ws.onopen = function () {
+                // listen for attached devices
+                ws.send(JSON.stringify({ listen: 'RawInputDevices' }));
+                // listen for gamepad button events
+                ws.send(JSON.stringify({ listen: 'RawInputGamepadButtons' }));
+                // listen for gamepad axis events
+                ws.send(JSON.stringify({ listen: 'RawInputGamepadAxes' }));
+            };
+            ws.onmessage = function (event) {
+                let data = JSON.parse(event.data);
+
+                if (data.type == 'Ping') {
+                    // reply to ping messages
+                    ws.send(JSON.stringify({ ping: data.ping }));
+                    return;
+                }
+
+                if (data.type == 'RawInputDevices') {
+                    if (data.attached) {
+                        devices[data.hDevice] = data;
+                    } else {
+                        delete devices[data.hDevice];
+                    }
+                    return;
+                }
+
+                // if event comes from another gamepad - ignore
+                if (currentGamepad && currentGamepad != data.hDevice) {
+                    return;
+                }
+
+                if (data.type == 'RawInputGamepadAxes') {
+                    if (data.index == dPadAxis) {
+                        let min = devices[data.hDevice].axes[dPadAxis].min;
+                        let max = devices[data.hDevice].axes[dPadAxis].max;
+                        dPadValue = data.value;
+                        if (min <= dPadValue && dPadValue <= max) {
+                            processDPad(data.value - min);
+                        } else {
+                            processDPad(null);
+                        }
+                        return;
+                    }
+
+                    let value = axisValueToFloat(devices[data.hDevice].axes[data.index], data.value);
+                    if (data.index == leftStickAxisX) {
+                        leftStickPos.dx = value;
+                        moveStick(leftStickCore, leftStickCoreInitTransforms, leftStickPos);
+                    }
+                    if (data.index == leftStickAxisY) {
+                        leftStickPos.dy = value;
+                        moveStick(leftStickCore, leftStickCoreInitTransforms, leftStickPos);
+                    }
+                    if (data.index == rightStickAxisX) {
+                        rightStickPos.dx = value;
+                        moveStick(rightStickCore, rightStickCoreInitTransforms, rightStickPos);
+                    }
+                    if (data.index == rightStickAxisY) {
+                        rightStickPos.dy = value;
+                        moveStick(rightStickCore, rightStickCoreInitTransforms, rightStickPos);
+                    }
+                    if (data.index == leftTriggerAxis) {
+                        leftTriggerPos = value;
+                        moveTrigger(leftTrigger, leftTriggerClipPath, leftTriggerPos);
+                    }
+                    if (data.index == rightTriggerAxis) {
+                        rightTriggerPos = value;
+                        moveTrigger(rightTrigger, rightTriggerClipPath, rightTriggerPos);
+                    }
+                    return;
+                }
+
+                if (data.type == 'RawInputGamepadButtons') {
+                    let element;
+                    if (data.button == 10) {
+                        element = leftStickCore;
+                    } else if (data.button == 11) {
+                        element = rightStickCore;
+                    } else {
+                        element = svgDoc.getElementById('Button' + data.button);
+                    }
+                    if (element) {
+                        if (data.pressed) {
+                            setButtonPressed(element);
+                        } else {
+                            setButtonUnpressed(element);
+                        }
+                    }
+                    return;
+                }
+
+            };
+        }
+
+        function onSvgLoaded() {
+            let object = document.getElementsByTagName('object')[0];
+            svgDoc = object.contentDocument;
+
+            leftStickCore = svgDoc.getElementById('LeftStickCore');
+            rightStickCore = svgDoc.getElementById('RightStickCore');
+            leftTrigger = svgDoc.getElementById('LeftTrigger');
+            rightTrigger = svgDoc.getElementById('RightTrigger');
+            leftStickCoreInitTransforms = leftStickCore.transform.baseVal.length;
+            rightStickCoreInitTransforms = rightStickCore.transform.baseVal.length;
+
+            if (location.search.length > 1) {
+                // allow to listen specific gamepad
+                currentGamepad = location.search.substr(1);
+            }
+
+            attachSvgGlowDefinition(svgDoc);
+
+            initTriggers();
+
+            listenWebSocket();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            let object = document.getElementsByTagName('object')[0];
+            if (object.contentDocument && object.contentDocument.rootElement) {
+                onSvgLoaded();
+            } else {
+                object.addEventListener('load', onSvgLoaded);
+            }
+        });
+
+    </script>
+</head>
+<body>
+    <div>
+        <object data="DualSense-RawInput.svg" type="image/svg+xml"></object>
+    </div>
+</body>
+</html>

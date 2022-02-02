@@ -13,6 +13,7 @@ namespace Zergatul.Obs.InputOverlay.RawInput.Device
         public int LogicalMax { get; }
         public ushort UsageMin { get; }
         public uint Value { get; set; }
+        public bool Ignore { get; set; }
 
         internal Axis(int index, WinApi.Hid.HIDP_VALUE_CAPS caps)
         {
