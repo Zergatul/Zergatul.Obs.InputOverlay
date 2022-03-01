@@ -22,10 +22,10 @@ namespace Zergatul.Obs.InputOverlay.XInput
         {
             _logger = logger;
 
+            _gamepads = new XINPUT_GAMEPAD?[XUSER_MAX_COUNT];
+
             _pollingThread = new Thread(PollingThreadFunc);
             _pollingThread.Start();
-
-            _gamepads = new XINPUT_GAMEPAD?[XUSER_MAX_COUNT];
         }
 
         public void Dispose()

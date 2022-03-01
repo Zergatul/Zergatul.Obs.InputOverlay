@@ -7,7 +7,7 @@
     <RootNamespace>Zergatul.Obs.InputOverlay</RootNamespace>
     <Authors>Zergatul</Authors>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <Version>2.2.0</Version>
+    <Version>2.2.1</Version>
     <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
     <StartupObject>Zergatul.Obs.InputOverlay.Program</StartupObject>
     <PackageProjectUrl>https://github.com/Zergatul/Zergatul.Obs.InputOverlay</PackageProjectUrl>
