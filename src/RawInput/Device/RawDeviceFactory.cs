@@ -143,17 +143,19 @@ namespace Zergatul.Obs.InputOverlay.RawInput.Device
             NativeMemoryBlock preparsedData = _buffer.ToMemoryBlock(size);
 
             HIDP_CAPS caps = default;
-            if (HidP_GetCaps(preparsedData.Pointer, ref caps) != HidPStatus.HIDP_STATUS_SUCCESS)
+            HidPStatus status = HidP_GetCaps(preparsedData.Pointer, ref caps);
+            if (status != HidPStatus.HIDP_STATUS_SUCCESS)
             {
-                _logger.LogError($"Cannot get gamepad caps {FormatWin32Error(Marshal.GetLastWin32Error())}.");
+                _logger.LogError($"Cannot get gamepad caps {FormatHidPStatus(status)} {FormatWin32Error(Marshal.GetLastWin32Error())}.");
                 return null;
             }
 
             ushort numberButtonsCaps = caps.NumberInputButtonCaps;
             HIDP_BUTTON_CAPS[] buttonCaps = new HIDP_BUTTON_CAPS[numberButtonsCaps];
-            if (HidP_GetButtonCaps(HIDP_REPORT_TYPE.HidP_Input, buttonCaps, ref numberButtonsCaps, preparsedData.Pointer) != HidPStatus.HIDP_STATUS_SUCCESS)
+            status = HidP_GetButtonCaps(HIDP_REPORT_TYPE.HidP_Input, buttonCaps, ref numberButtonsCaps, preparsedData.Pointer);
+            if (status != HidPStatus.HIDP_STATUS_SUCCESS)
             {
-                _logger.LogError($"Cannot get gamepad button caps {FormatWin32Error(Marshal.GetLastWin32Error())}.");
+                _logger.LogError($"Cannot get gamepad button caps {FormatHidPStatus(status)} {FormatWin32Error(Marshal.GetLastWin32Error())}.");
                 return null;
             }
 
@@ -168,9 +170,10 @@ namespace Zergatul.Obs.InputOverlay.RawInput.Device
 
             ushort numberValueCaps = caps.NumberInputValueCaps;
             HIDP_VALUE_CAPS[] valueCaps = new HIDP_VALUE_CAPS[numberValueCaps];
-            if (HidP_GetValueCaps(HIDP_REPORT_TYPE.HidP_Input, valueCaps, ref numberValueCaps, preparsedData.Pointer) != HidPStatus.HIDP_STATUS_SUCCESS)
+            status = HidP_GetValueCaps(HIDP_REPORT_TYPE.HidP_Input, valueCaps, ref numberValueCaps, preparsedData.Pointer);
+            if (status != HidPStatus.HIDP_STATUS_SUCCESS)
             {
-                _logger.LogError($"Cannot get gamepad value caps {FormatWin32Error(Marshal.GetLastWin32Error())}.");
+                _logger.LogError($"Cannot get gamepad value caps {FormatHidPStatus(status)} {FormatWin32Error(Marshal.GetLastWin32Error())}.");
                 return null;
             }
 

@@ -16,6 +16,18 @@ namespace Zergatul.Obs.InputOverlay
             }
         }
 
+        internal static string FormatHidPStatus(WinApi.Hid.HidPStatus status)
+        {
+            if (Enum.IsDefined(status))
+            {
+                return $"({status} hex={FormatErrorCode((int)status)} dec={(int)status})";
+            }
+            else
+            {
+                return $"(hex={FormatErrorCode((int)status)} dec={(int)status})";
+            }
+        }
+
         private static string FormatErrorCode(int code)
         {
             return "0x" + code.ToString("X2").PadLeft(8, '0');

@@ -361,6 +361,12 @@ namespace Zergatul.Obs.InputOverlay.RawInput
                 }
             }
 
+            if (device == null)
+            {
+                // device was not properly initialized
+                return;
+            }
+
             if (device is not RawGamepadDevice gamepad)
             {
                 _logger.LogWarning($"RawHid event invalid device: {device.GetType()}.");
