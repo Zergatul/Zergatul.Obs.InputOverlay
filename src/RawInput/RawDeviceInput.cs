@@ -32,12 +32,14 @@ namespace Zergatul.Obs.InputOverlay.RawInput
         private readonly ILogger _logger;
         private readonly WndProc _wndProc;
         private readonly Thread _wndThread;
+        private readonly ManualResetEvent _wndThreadInitializedEvent;
         private IntPtr _hWnd;
         private IntPtr _buffer;
         private int _rawInputHeaderSize;
         private int _rawHidDataOffset;
         private Dictionary<IntPtr, RawDevice> _devices;
         private bool[] _gamepadButtonsBuffer;
+        private int _disposed;
 
         public RawDeviceInput(IRawDeviceFactory factory, ILogger<RawDeviceInput> logger)
         {
@@ -58,20 +60,28 @@ namespace Zergatul.Obs.InputOverlay.RawInput
                     _logger.LogWarning("App is running under non-admin. Devices input will not work from applications running as admin.");
             }
 
+            _wndThreadInitializedEvent = new ManualResetEvent(false);
             _wndThread = new Thread(ThreadFunc);
             _wndThread.Start();
         }
 
         public void Dispose()
         {
-            _factory?.Dispose();
+            if (Interlocked.Exchange(ref _disposed, 1) == 1)
+            {
+                return;
+            }
 
+            _wndThreadInitializedEvent.WaitOne();
             if (_hWnd != IntPtr.Zero)
             {
                 SendMessage(_hWnd, WindowsMessage.WM_DESTROY, IntPtr.Zero, IntPtr.Zero);
-                _wndThread.Join();
                 _hWnd = IntPtr.Zero;
             }
+            _wndThread.Join();
+
+            _factory?.Dispose();
+            _wndThreadInitializedEvent.Dispose();
 
             if (_buffer != IntPtr.Zero)
             {
@@ -83,75 +93,84 @@ namespace Zergatul.Obs.InputOverlay.RawInput
 
         private void ThreadFunc()
         {
-            IntPtr hInstance = GetModuleHandleW(null);
-
-            WNDCLASSEX wc = new WNDCLASSEX();
-            wc.cbSize = Marshal.SizeOf(typeof(WNDCLASSEX));
-            wc.lpfnWndProc = _wndProc;
-            wc.hInstance = hInstance;
-            wc.lpszClassName = WindowClass;
-            ushort atom = RegisterClassEx(ref wc);
-            if (atom == 0)
+            try
             {
-                _logger.LogError($"Cannot register window class {FormatWin32Error(Marshal.GetLastWin32Error())}.");
-                return;
+                IntPtr hInstance = GetModuleHandleW(null);
+
+                WNDCLASSEX wc = new WNDCLASSEX();
+                wc.cbSize = Marshal.SizeOf(typeof(WNDCLASSEX));
+                wc.lpfnWndProc = _wndProc;
+                wc.hInstance = hInstance;
+                wc.lpszClassName = WindowClass;
+                ushort atom = RegisterClassEx(ref wc);
+                if (atom == 0)
+                {
+                    _logger.LogError($"Cannot register window class {FormatWin32Error(Marshal.GetLastWin32Error())}.");
+                    return;
+                }
+
+                _hWnd = CreateWindowExW(
+                    dwExStyle: 0,
+                    lpClassName: new IntPtr(atom),
+                    lpWindowName: WindowName,
+                    dwStyle: WindowStyles.WS_POPUP,
+                    x: 0,
+                    y: 0,
+                    nWidth: 100,
+                    nHeight: 100,
+                    hWndParent: IntPtr.Zero,
+                    hMenu: IntPtr.Zero,
+                    hInstance: hInstance,
+                    lpParam: IntPtr.Zero);
+                if (_hWnd == IntPtr.Zero)
+                {
+                    _logger.LogError($"Cannot create window {FormatWin32Error(Marshal.GetLastWin32Error())}.");
+                    return;
+                }
+
+                _wndThreadInitializedEvent.Set();
+
+                RAWINPUTDEVICE[] devices;
+
+                devices = new RAWINPUTDEVICE[1];
+                devices[0].usUsagePage = RawInputDeviceUsagePage.HID_USAGE_PAGE_GENERIC;
+                devices[0].usUsage = RawInputDeviceUsage.HID_USAGE_GENERIC_MOUSE;
+                devices[0].dwFlags = RawInputDeviceFlags.RIDEV_INPUTSINK | RawInputDeviceFlags.RIDEV_DEVNOTIFY;
+                devices[0].hwndTarget = _hWnd;
+                if (!RegisterRawInputDevices(devices, 1, Marshal.SizeOf(typeof(RAWINPUTDEVICE))))
+                {
+                    _logger.LogError($"Cannot register raw mouse input {FormatWin32Error(Marshal.GetLastWin32Error())}.");
+                }
+
+                devices = new RAWINPUTDEVICE[1];
+                devices[0].usUsagePage = RawInputDeviceUsagePage.HID_USAGE_PAGE_GENERIC;
+                devices[0].usUsage = RawInputDeviceUsage.HID_USAGE_GENERIC_KEYBOARD;
+                devices[0].dwFlags = RawInputDeviceFlags.RIDEV_INPUTSINK | RawInputDeviceFlags.RIDEV_DEVNOTIFY;
+                devices[0].hwndTarget = _hWnd;
+                if (!RegisterRawInputDevices(devices, 1, Marshal.SizeOf(typeof(RAWINPUTDEVICE))))
+                {
+                    _logger.LogError($"Cannot register raw keyboard input {FormatWin32Error(Marshal.GetLastWin32Error())}.");
+                }
+
+                devices = new RAWINPUTDEVICE[1];
+                devices[0].usUsagePage = RawInputDeviceUsagePage.HID_USAGE_PAGE_GENERIC;
+                devices[0].usUsage = RawInputDeviceUsage.HID_USAGE_GENERIC_GAMEPAD;
+                devices[0].dwFlags = RawInputDeviceFlags.RIDEV_INPUTSINK | RawInputDeviceFlags.RIDEV_DEVNOTIFY;
+                devices[0].hwndTarget = _hWnd;
+                if (!RegisterRawInputDevices(devices, 1, Marshal.SizeOf(typeof(RAWINPUTDEVICE))))
+                {
+                    _logger.LogError($"Cannot register raw gamepad input {FormatWin32Error(Marshal.GetLastWin32Error())}.");
+                }
+
+                while (GetMessage(out MSG msg, IntPtr.Zero, 0, 0))
+                {
+                    TranslateMessage(ref msg);
+                    DispatchMessage(ref msg);
+                }
             }
-
-            _hWnd = CreateWindowExW(
-                dwExStyle: 0,
-                lpClassName: new IntPtr(atom),
-                lpWindowName: WindowName,
-                dwStyle: WindowStyles.WS_POPUP,
-                x: 0,
-                y: 0,
-                nWidth: 100,
-                nHeight: 100,
-                hWndParent: IntPtr.Zero,
-                hMenu: IntPtr.Zero,
-                hInstance: hInstance,
-                lpParam: IntPtr.Zero);
-            if (_hWnd == IntPtr.Zero)
+            finally
             {
-                _logger.LogError($"Cannot create window {FormatWin32Error(Marshal.GetLastWin32Error())}.");
-                return;
-            }
-
-            RAWINPUTDEVICE[] devices;
-
-            devices = new RAWINPUTDEVICE[1];
-            devices[0].usUsagePage = RawInputDeviceUsagePage.HID_USAGE_PAGE_GENERIC;
-            devices[0].usUsage = RawInputDeviceUsage.HID_USAGE_GENERIC_MOUSE;
-            devices[0].dwFlags = RawInputDeviceFlags.RIDEV_INPUTSINK | RawInputDeviceFlags.RIDEV_DEVNOTIFY;
-            devices[0].hwndTarget = _hWnd;
-            if (!RegisterRawInputDevices(devices, 1, Marshal.SizeOf(typeof(RAWINPUTDEVICE))))
-            {
-                _logger.LogError($"Cannot register raw mouse input {FormatWin32Error(Marshal.GetLastWin32Error())}.");
-            }
-
-            devices = new RAWINPUTDEVICE[1];
-            devices[0].usUsagePage = RawInputDeviceUsagePage.HID_USAGE_PAGE_GENERIC;
-            devices[0].usUsage = RawInputDeviceUsage.HID_USAGE_GENERIC_KEYBOARD;
-            devices[0].dwFlags = RawInputDeviceFlags.RIDEV_INPUTSINK | RawInputDeviceFlags.RIDEV_DEVNOTIFY;
-            devices[0].hwndTarget = _hWnd;
-            if (!RegisterRawInputDevices(devices, 1, Marshal.SizeOf(typeof(RAWINPUTDEVICE))))
-            {
-                _logger.LogError($"Cannot register raw keyboard input {FormatWin32Error(Marshal.GetLastWin32Error())}.");
-            }
-
-            devices = new RAWINPUTDEVICE[1];
-            devices[0].usUsagePage = RawInputDeviceUsagePage.HID_USAGE_PAGE_GENERIC;
-            devices[0].usUsage = RawInputDeviceUsage.HID_USAGE_GENERIC_GAMEPAD;
-            devices[0].dwFlags = RawInputDeviceFlags.RIDEV_INPUTSINK | RawInputDeviceFlags.RIDEV_DEVNOTIFY;
-            devices[0].hwndTarget = _hWnd;
-            if (!RegisterRawInputDevices(devices, 1, Marshal.SizeOf(typeof(RAWINPUTDEVICE))))
-            {
-                _logger.LogError($"Cannot register raw gamepad input {FormatWin32Error(Marshal.GetLastWin32Error())}.");
-            }
-
-            while (GetMessage(out MSG msg, IntPtr.Zero, 0, 0))
-            {
-                TranslateMessage(ref msg);
-                DispatchMessage(ref msg);
+                _wndThreadInitializedEvent.Set();
             }
         }
 
