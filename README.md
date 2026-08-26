@@ -1,5 +1,5 @@
 # Zergatul.Obs.InputOverlay
-Input overlay plugin for OBS. Supported systems: Windows 10 x64
+Input overlay plugin for OBS. Supported systems: Windows 10/11 x64
 
 ![logo](https://github.com/Zergatul/Zergatul.Obs.InputOverlay/blob/master/docs/logo.png?raw=true)
 
@@ -20,17 +20,50 @@ Input overlay plugin for OBS. Supported systems: Windows 10 x64
 
 ![keyboard source](https://github.com/Zergatul/Zergatul.Obs.InputOverlay/blob/master/docs/keyboard-source.png?raw=true)
 
+# Using OBS on another PC
+
+For simplicity of this guide we will use 2 terms:
+- Gaming PC - PC where you run a game. You want to record inputs from this PC
+- OBS PC - PC where you run OBS
+
+Remote setup does not require editing files in `wwwroot`.
+
+First you need to find LAN IP address of gaming PC. You can run `ipconfig` from command line, find appropriate Ethernet or Wireless LAN adapter, and copy IP address. For this example we will use `192.168.1.123`
+
+After that you need to choose a TCP port you will use for communication between Input Overlay on gaming PC and OBS on OBS PC. You have to make sure you opened this port on all firewalls that can block connections in your LAN. For this example we will use port `12345`.
+
+Start `Zergatul.Obs.InputOverlay.exe` on gaming PC from Command Prompt or Powershell window with `listen` and `port` arguments:
+```powershell
+.\Zergatul.Obs.InputOverlay.exe --listen 192.168.1.123 --port 12345
+```
+
+If you get error `Specified listen ip/host is not valid`
+it means IP address you specified is not valid. Check again its correctness.
+
+If firewalls are configured properly you can try opening `http://192.168.1.123:12345/default-keyboard.html` 
+in any browser on OBS PC. If it opens empty white page, everything is fine (the page is not actually white, it is fully transparent and browser renders white by default). You can try pressing WASD, Ctrl, Shift buttons and see them highlighted.
+
+If browser can't reach this page with messages like "refused to connect", something went wrong. In this case start PowerShell from Start menu and run below command on 2 PCs with Input Overlay running:
+
+```powershell
+Test-NetConnection -ComputerName 192.168.1.123 -Port 12345
+```
+
+In the command output you should look for `TcpTestSucceeded : True`. When everything is setup correctly, you should see `True`, on both machines. If on OBS PC it is `False` but `True` on gaming PC - the problem is firewall. If it is `False` on both machines - you probably made a typo in IP address or port.
+
+Now you can add Browser Source to your OBS. Substitute IP and port in the page URL you want to use, example: `http://192.168.1.123:12345/default-keyboard.html`
+
 # Advanced usage
 1. If you are running server application without elevated priviledges, it will not be able to detect your inputs from applications running under administrator. Example: I have game started from Steam, and command prompt, running as Administrator. Server will be able to detect inputs in game, but will show nothing when I type something in command prompt.
 2. You can show more keys, change style, colors, animations if you are familiar with HTML and CSS. Check `wwwroot` folder within application folder. It contains HTML, CSS and JavaScript files. You can get all supported key names from [KeyboardButton.cs](src/Keyboard/KeyboardButton.cs) file.
 3. [Customizing mouse/gamepad](docs/CustomizingMouse.md).
 4. If you need to restart server application, you will need to hide sources in OBS, and show them again.
-5. If you want to play on one PC, and run OBS on another you need to run executable with parameter: `--urls http://<IP address>:<port>/`. IP address should be local network address of PC where you play game and run executable. You can choose port whatever you like, but it is better not use ports lower than 1000. If you have firewall make sure you opened incoming TCP port. Example: `Zergatul.Obs.InputOverlay.exe --urls http://192.168.1.123:12345/`. If everything is fine, you should see in the log: `Now listening on: http://192.168.1.123:12345`. If you create `.bat` or link file for this, make sure you don't mess up with current directory. Check `Content root path` log record. It should point to the same directory as executable. This is where application looks for `wwwroot` directory.
-6. [Using multiple gamepads](docs/MultipleGamepads.md).
+5. [Using multiple gamepads](docs/MultipleGamepads.md).
+6. Run executable with `--help` to see all available options.
 
 # Troubleshooting
 If you encounter any problems with running Browser Source in OBS, you can open keyboard/mouse URL's in your browser and check for errors in developer console. In `<style>` element uncomment line: `background-color: black;`. Now open URL in your browser with Developer Tools opened (usually this is `F12` key). Don't forget to comment out this line again if you start using overlay in OBS. Sometimes browser source in OBS caches styles, you can use `Refresh cache of current page` button.
 
 # Build application from sources
-You can open solution file in Visual Studio 2022. Program is written in C#, by using ASP.NET Core for web server. Use `Build` -> `Publish` menu option to create self-contained package.
-You can also build it by using [.NET CLI](https://docs.microsoft.com/en-us/dotnet/core/tools/). Download .NET 6.0 SDK, go to `src` directory and run from command prompt: `dotnet publish -c Release -p:PublishProfile=FolderProfile`
+You can open solution file in Visual Studio 2022+. Program is written in C#, by using ASP.NET Core for web server. Use `Build` -> `Publish` menu option to create self-contained package.
+You can also build it by using [.NET CLI](https://docs.microsoft.com/en-us/dotnet/core/tools/). Download .NET 8.0 SDK, go to `src` directory and run from command prompt: `dotnet publish -c Release -p:PublishProfile=FolderProfile`

@@ -2,7 +2,7 @@
   "profiles": {
     "ZergatulInputOverlay": {
       "commandName": "Project",
-      "commandLineArgs": "--Logging:LogLevel:Zergatul=Debug"
+      "commandLineArgs": "--listen localhost --port 5001 --enable-debug-log"
     }
   }
 }
